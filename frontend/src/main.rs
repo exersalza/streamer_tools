@@ -1,3 +1,32 @@
+use yew::prelude::*;
+use yew_router::prelude::*;
+
+#[derive(Clone, Routable, PartialEq)]
+enum Route {
+    #[at("/")]
+    Home,
+    #[at("/login")]
+    Login,
+}
+
+fn switch(routes: Route) -> Html {
+    match routes {
+        Route::Home => html! { <h1> {"Hello frontend"} </h1>},
+        Route::Login => html! { <h1> {"f"} </h1> },
+    }
+}
+
+#[function_component(App)]
+fn app() -> Html {
+    html! {
+        <BrowserRouter>
+            <Switch<Route> render={switch} />
+        </BrowserRouter>
+    }
+}
+
 fn main() {
-    println!("Hello, world!");
+    wasm_logger::init(wasm_logger::Config::new(log::Level::Trace));
+    console_error_panic_hook::set_once();
+    yew::Renderer::<App>::new().render();
 }
