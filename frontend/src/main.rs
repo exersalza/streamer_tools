@@ -1,5 +1,5 @@
-use crate::components::sideapp::SideApp;
 use yew::prelude::*;
+use crate::components::nav::Nav;
 
 mod components;
 
@@ -15,8 +15,8 @@ impl Component for App {
 
     fn view(&self, _ctx: &Context<Self>) -> Html {
         html! {
-            <div>
-                <SideApp />
+            <div class={classes!("h-screen", "w-screen", "bg-base")}>
+                <Nav />
             </div>
         }
     }

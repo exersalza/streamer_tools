@@ -8,9 +8,12 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="00e68141-64ce-4cb6-83cf-b5b5f78ed52a" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/frontend/src/components/nav.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/src/components/mod.rs" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/components/mod.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/src/components/sideapp.rs" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/components/sideapp.rs" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/frontend/css/style.css" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/index.html" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/index.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/components/nav.rs" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/components/nav.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/main.rs" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/main.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/tailwind.config.js" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/tailwind.config.js" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -21,6 +24,7 @@
     <option name="RECENT_TEMPLATES">
       <list>
         <option value="Rust File" />
+        <option value="CSS File" />
       </list>
     </option>
   </component>
@@ -53,14 +57,15 @@
     "deletionFromPopupRequiresConfirmation": "false",
     "git-widget-placeholder": "main",
     "ignore.virus.scanning.warn.message": "true",
-    "last_opened_file_path": "E:/development/rust/streamer_tools/frontend/build.sh",
+    "last_opened_file_path": "E:/development/rust/streamer_tools/frontend",
+    "list.type.of.created.stylesheet": "CSS",
     "node.js.detected.package.eslint": "true",
     "node.js.detected.package.tslint": "true",
     "node.js.selected.package.eslint": "(autodetect)",
     "node.js.selected.package.tslint": "(autodetect)",
     "nodejs_package_manager_path": "npm",
     "org.rust.cargo.project.model.PROJECT_DISCOVERY": "true",
-    "settings.editor.selected.configurable": "com.maddyhome.idea.vim.ui.VimEmulationConfigurable",
+    "settings.editor.selected.configurable": "preferences.pluginManager",
     "vue.rearranger.settings.migration": "true"
   }
 }]]></component>
@@ -182,7 +187,7 @@
       <workItem from="1699548784152" duration="44000" />
       <workItem from="1699548839051" duration="170000" />
       <workItem from="1699549039650" duration="48000" />
-      <workItem from="1699549094753" duration="5157000" />
+      <workItem from="1699549094753" duration="8028000" />
     </task>
     <servers />
   </component>

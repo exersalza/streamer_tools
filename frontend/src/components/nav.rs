@@ -22,7 +22,8 @@ impl Component for Nav {
 
     fn view(&self, ctx: &Context<Self>) -> Html {
         html! {
-            <div>
+            <div class={classes!("")}>
+
             </div>
         }
     }
