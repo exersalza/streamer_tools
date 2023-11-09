@@ -16,7 +16,7 @@ pub struct Data {
 }
 
 pub enum Msg {
-    FuturerOut(Data),
+    FutureOut(Data),
 }
 
 pub struct SideApp {
@@ -37,7 +37,7 @@ impl Component for SideApp {
 
         spawn_local(async move {
             match get("http://localhost:8080/api/hello").await {
-                Ok(response_data) => link.send_message(Msg::FuturerOut(Data {
+                Ok(response_data) => link.send_message(Msg::FutureOut(Data {
                     data: response_data,
                 })),
                 Err(e) => {
@@ -51,25 +51,13 @@ impl Component for SideApp {
 
     fn update(&mut self, _ctx: &Context<Self>, msg: Self::Message) -> bool {
         match msg {
-            Msg::FuturerOut(data) => self.local_data.data = data.data,
+            Msg::FutureOut(data) => self.local_data.data = data.data,
         };
         true
     }
 
     fn view(&self, _ctx: &Context<Self>) -> Html {
-        // spawn_local(async move {
-        //     match get("http://localhost:8080/api/hello").await {
-        //         Ok(data) => link.send_message(Msg::FuturerOut(Data { data })),
-        //         Err(e) => {
-        //             eprintln!("{e}");
-        //         }
-        //     };
-        // });
         let mut display = self.local_data.data.clone();
-
-        if display.is_empty() {
-            display = String::from("some random string");
-        }
 
         html! {
             <div>
