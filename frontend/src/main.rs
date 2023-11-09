@@ -1,27 +1,24 @@
+use crate::components::sideapp::SideApp;
 use yew::prelude::*;
-use yew_router::prelude::*;
 
-#[derive(Clone, Routable, PartialEq)]
-enum Route {
-    #[at("/")]
-    Home,
-    #[at("/login")]
-    Login,
-}
+mod components;
 
-fn switch(routes: Route) -> Html {
-    match routes {
-        Route::Home => html! { <h1> {"Hello frontend"} </h1>},
-        Route::Login => html! { <h1> {"f"} </h1> },
+struct App {}
+
+impl Component for App {
+    type Message = ();
+    type Properties = ();
+
+    fn create(_ctx: &Context<Self>) -> Self {
+        Self {}
     }
-}
 
-#[function_component(App)]
-fn app() -> Html {
-    html! {
-        <BrowserRouter>
-            <Switch<Route> render={switch} />
-        </BrowserRouter>
+    fn view(&self, _ctx: &Context<Self>) -> Html {
+        html! {
+            <div>
+                <SideApp />
+            </div>
+        }
     }
 }
 
