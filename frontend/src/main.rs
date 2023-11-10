@@ -1,6 +1,6 @@
 use crate::components::nav::Nav;
 use yew::prelude::*;
-use log::{info, warn};
+use log::{info, warn, debug};
 
 mod components;
 mod utils;
@@ -14,6 +14,7 @@ impl Component for App {
     type Properties = ();
 
     fn create(_ctx: &Context<Self>) -> Self {
+        debug!("created App");
         Self {}
     }
 
@@ -27,8 +28,10 @@ impl Component for App {
     }
 }
 
+
 fn main() {
-    wasm_logger::init(wasm_logger::Config::new(log::Level::Trace));
+    let dev = env!("PROD");
+    wasm_logger::init(wasm_logger::Config::new(log::Level::Info));
     console_error_panic_hook::set_once();
     yew::Renderer::<App>::new().render();
 }
