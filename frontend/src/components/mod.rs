@@ -1,2 +1,2 @@
-pub mod sideapp;
 pub mod nav;
+pub mod sideapp;

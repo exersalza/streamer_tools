@@ -1,5 +1,5 @@
-use yew::prelude::*;
 use crate::components::nav::Nav;
+use yew::prelude::*;
 
 mod components;
 
@@ -15,7 +15,8 @@ impl Component for App {
 
     fn view(&self, _ctx: &Context<Self>) -> Html {
         html! {
-            <div class={classes!("h-screen", "w-screen", "bg-base")}>
+            <div class={classes!("h-screen", "w-screen", "bg-accent", "text-white", )}>
+                <p class={classes!("text-white")}> {"test"}</p>
                 <Nav />
             </div>
         }
