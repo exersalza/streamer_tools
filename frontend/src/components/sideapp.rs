@@ -1,14 +1,8 @@
 use log::info;
-use reqwest::Client;
 use wasm_bindgen_futures::spawn_local;
 use yew::prelude::*;
 
-async fn get(url: &str) -> Result<String, reqwest::Error> {
-    let client = Client::new();
-    let response = client.get(url).send().await?;
-    let text = response.text().await?;
-    Ok(text)
-}
+use super::utils::get;
 
 #[derive(Debug, PartialEq)]
 pub struct Data {
@@ -57,7 +51,7 @@ impl Component for SideApp {
     }
 
     fn view(&self, _ctx: &Context<Self>) -> Html {
-        let mut display = self.local_data.data.clone();
+        let display = self.local_data.data.clone();
 
         html! {
             <div>

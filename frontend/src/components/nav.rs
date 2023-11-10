@@ -1,6 +1,8 @@
 use std::collections::HashMap;
 
 use yew::prelude::*;
+use crate::components::utils::class;
+
 
 pub struct NavItem {
     name: String,
@@ -30,13 +32,15 @@ impl Component for Nav {
             .into_iter()
             .map(|item| {
                 html! {
-                    <p class={classes!("text-green-500")}>{item.name.clone()}</p>
+                    <div>
+                        <p>{item.name.clone()}</p>
+                    </div>
                 }
             })
             .collect();
 
         html! {
-            <div class={classes!("bg-blue-500")}>
+            <div class={class("bg-blue-700 ")}>
                 { items }
             </div>
         }
