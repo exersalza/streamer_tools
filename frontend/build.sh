@@ -1,8 +1,11 @@
 #!/bin/bash
 
-# just to build all the files we'll need
+cargo watch -q -w . -s "tailwind -o ./css/tailwind.css && trunk build"
 
-tailwind -o ./css/tailwind.css
+###  When you want the old method of this script
+
+# just to build all the files we'll need
+# tailwind -o ./css/tailwind.css
 
 # start the wasm build
-trunk build
+# trunk build

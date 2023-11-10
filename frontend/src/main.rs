@@ -1,7 +1,11 @@
 use crate::components::nav::Nav;
 use yew::prelude::*;
+use log::{info, warn};
 
 mod components;
+mod utils;
+
+use utils::class;
 
 struct App {}
 
@@ -15,8 +19,8 @@ impl Component for App {
 
     fn view(&self, _ctx: &Context<Self>) -> Html {
         html! {
-            <div class={classes!("h-screen", "w-screen", "bg-accent", "text-white", )}>
-                <p class={classes!("text-white")}> {"test"}</p>
+            <div class={class("h-screen w-screen bg-accent text-white")}>
+                <p class={class("bg-blue-300 text-green-400")}> {"test"}</p>
                 <Nav />
             </div>
         }
