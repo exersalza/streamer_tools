@@ -421,6 +421,7 @@ dependencies = [
 name = "frontend"
 version = "0.1.0"
 dependencies = [
+ "clap",
  "console_error_panic_hook",
  "gloo-net 0.4.0",
  "log",

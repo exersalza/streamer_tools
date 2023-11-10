@@ -21,7 +21,6 @@ impl Component for App {
     fn view(&self, _ctx: &Context<Self>) -> Html {
         html! {
             <div class={class("h-screen w-screen bg-accent text-white")}>
-                <p class={class("bg-blue-300 text-green-400")}> {"test"}</p>
                 <Nav />
             </div>
         }
@@ -31,7 +30,18 @@ impl Component for App {
 
 fn main() {
     let dev = env!("PROD");
-    wasm_logger::init(wasm_logger::Config::new(log::Level::Info));
+
+    // check if prod is on and if set log level to info
+    let log_level: log::Level = match dev.parse::<bool>() {
+        Ok(x) => {if x {
+            log::Level::Info
+        } else {
+            log::Level::Debug
+        }},
+        Err(_) => log::Level::Debug,
+    };
+
+    wasm_logger::init(wasm_logger::Config::new(log_level));
     console_error_panic_hook::set_once();
     yew::Renderer::<App>::new().render();
 }
