@@ -9,7 +9,7 @@ $trunk = ""
 if ($prod) {
     $Env:PROD = "true"
     $tailwind = "--minify"
-    $trunk = "--release"
+    $trunk = "--release --public-url /"
 }
 
 $cmd = [string]::Format("tailwind -o .\css\tailwind.css {0} && trunk build {1}",$tailwind,$trunk)

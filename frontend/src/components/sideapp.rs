@@ -2,12 +2,7 @@ use log::info;
 use wasm_bindgen_futures::spawn_local;
 use yew::prelude::*;
 
-use super::utils::get;
-
-#[derive(Debug, PartialEq)]
-pub struct Data {
-    data: String,
-}
+use super::utils::{Data, get};
 
 pub enum Msg {
     FutureOut(Data),

@@ -13,3 +13,8 @@ pub async fn get(url: &str) -> Result<String, reqwest::Error> {
     let text = response.text().await?;
     Ok(text)
 }
+
+#[derive(Debug, PartialEq)]
+pub struct Data {
+    pub data: String,
+}
