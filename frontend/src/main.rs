@@ -104,7 +104,8 @@ fn switch(routes: Route) -> Html {
         Route::Home => html! {<Base />},
         Route::Timer { id } => html! {<Timer />},
         Route::Some => html! {<p>{"fdsa"}</p>},
-        Route::NotFound => html! {<p class={class("bg-base-light grid place-items-center h-screen w-screen text-text")}>{"404 not found"}</p>}
+        Route::NotFound => html! {
+            <p class={class("bg-base-light grid place-items-center h-screen w-screen text-text")}>{"404 not found"}</p>}
     }
 }
 
