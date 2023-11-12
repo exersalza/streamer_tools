@@ -131,10 +131,11 @@ impl Sql {
     }
 
     pub fn create_timer(&self, timer: Timer) -> i32 {
-        let query = match self.get_time(timer.id) {
-            Some(f) => format!("update timers set time = {} where timer_id = {}", timer.time, timer.id),
-            None => format!("insert into timers(timer_id, time) values ({}, {})", timer.id, timer.time)
-        };
+        let query = format!("INSERT INTO timers (timer_id, time)
+VALUES ({}, '{}')
+ON CONFLICT (timer_id)
+DO UPDATE SET time = excluded.time;", timer.id, timer.time);
+
 
         self.conn.execute(query).unwrap();
 
