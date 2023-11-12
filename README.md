@@ -1,10 +1,12 @@
 # Sup
+[![wakatime](https://wakatime.com/badge/user/e979c403-8c51-4e2a-8fac-8dea013f7b3b/project/018b6d19-9d0b-421e-ac58-deba931507be.svg)](https://wakatime.com/badge/user/e979c403-8c51-4e2a-8fac-8dea013f7b3b/project/018b6d19-9d0b-421e-ac58-deba931507be)
 
 ## Todo
 - [ ] persisten websocket/socket timer for subathon
 - [ ] crash recovery
 - [x] dynamic timer
 - [ ] timer customization
+- [ ] add local time as clock
 - [ ] and much much more
 
 ## Installation

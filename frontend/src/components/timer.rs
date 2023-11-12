@@ -80,7 +80,7 @@ impl Component for Timer {
             let link = ctx.link().clone();
 
             spawn_local(async move {
-                match get("http://localhost:8080/api/subathon_timer/-1").await {
+                match get("http://localhost:8080/api/subathon_timer").await {
                     Ok(response_data) => link.send_message(Msg::Persistent(Data {
                         data: response_data,
                     })),

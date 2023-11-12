@@ -62,7 +62,7 @@ impl Component for Base {
                     // top right / nav??
                     <div class={class("bg-base-light flex")}>
 
-                        <Timer hour=5 minute=2 class={class("relative left-[33%]")} />
+                        <Timer hour=5 minute=2 class={class("relative left-[33%] top-4")} />
                         <Timer persistent=true />
                     </div>
                     // bottom left / item list

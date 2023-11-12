@@ -2,21 +2,25 @@ mod ws;
 mod subathon;
 
 use axum::{
+    Json,
     body::{boxed, Body},
     http::{Response, StatusCode},
     response::IntoResponse,
-    routing::{get, Router},
+    routing::{get, Router, post, delete},
 };
 use std::path::{Path, PathBuf};
-use tokio::fs;
+use tokio::{fs, task_local};
 use clap::Parser;
 use std::net::{IpAddr, Ipv6Addr, SocketAddr};
 use std::str::FromStr;
-use axum::extract::Path as axum_path;
+use axum::extract::{Path as axum_path, Query};
 use axum::response::Html;
 use tower::{ServiceBuilder, ServiceExt};
 use tower_http::services::ServeDir;
 use tower_http::trace::TraceLayer;
+use serde::Deserialize;
+use tracing_subscriber::fmt::format;
+
 use crate::subathon::subathon_timer::subathon_timer;
 
 #[derive(Parser, Debug)]
@@ -61,6 +65,8 @@ async fn main() {
     let app: Router = Router::new()
         .route("/api/hello", get(hello))
         .route("/api/timer/:id", get(timer))
+        .route("/api/timer/:id", delete(timer_del))
+        .route("/api/timer", post(timer_post))
         .route("/api/subathon_timer", get(subathon_timer))
         .fallback_service(get(|req| async move {
             let res = ServeDir::new(&opt.static_dir).oneshot(req).await.unwrap(); // serve dir is infallible
@@ -123,9 +129,54 @@ impl Sql {
 
         ret
     }
+
+    pub fn create_timer(&self, timer: Timer) -> i32 {
+        let query = match self.get_time(timer.id) {
+            Some(f) => format!("update timers set time = {} where timer_id = {}", timer.time, timer.id),
+            None => format!("insert into timers(timer_id, time) values ({}, {})", timer.id, timer.time)
+        };
+
+        self.conn.execute(query).unwrap();
+
+        timer.id
+    }
+
+    pub fn delete_timer(&self, timer_id: i32) {
+        let query = format!("delete from timers where id = {timer_id}");
+    }
+
+    pub fn get_time(&self, timer_id: i32) -> Option<Timer> {
+        todo!()
+    }
 }
 
-async fn timer(axum_path(id): axum_path<i32>) -> impl IntoResponse {format!("{id}")}
+#[derive(Debug)]
+pub struct Timer {
+    id: i32,
+    time: String
+}
+
+#[derive(Debug, Deserialize)]
+struct TimerPostData {
+    id: i32,
+    hours: i32,
+    minutes: i32,
+    seconds: i32
+}
+
+async fn timer(axum_path(id): axum_path<i32>) -> impl IntoResponse {
+    format!("{id}")
+}
+
+async fn timer_del(axum_path(id): axum_path<i32>) -> impl IntoResponse {
+    log::debug!("del triggers");
+    format!("{id}")
+}
+
+async fn timer_post(Json(data): Json<TimerPostData>) -> impl IntoResponse  {
+    log::debug!("{data:?}");
+    format!("post")
+}
 
 async fn hello() -> impl IntoResponse {
     "hello from da other side"
