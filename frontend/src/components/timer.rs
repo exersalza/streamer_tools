@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use yew::prelude::*;
 use yew::{BaseComponent, Component, Context, Html, html, };
 use gloo_timers::callback::Interval;
-use log::{error, info};
+use log::{debug, error, info};
 use wasm_bindgen_futures::spawn_local;
 use yew_router::prelude::*;
 
@@ -63,14 +63,14 @@ impl Component for Timer {
         for (key, value) in f {
             let value = match value.parse::<u64>() {
                 Ok(v) => {
-                    info!("{key} {}", (key == "minutes" || key == "seconds"));
+                    debug!("{key} {}", (key == "minutes" || key == "seconds"));
                     if (key == "minutes" || key == "seconds") && (v > 60 && v < 0) {
                         59
                     } else {
                         v
                     }
                 },
-                Err(e) => {error!("error while trying to parse int -> {e:?}"); 59},
+                Err(e) => {error!("error while trying to parse int({key}->{value}) -> {e:?}"); 59},
             };
 
             query_params.insert(key, value);
@@ -113,9 +113,9 @@ impl Component for Timer {
     }
 
     fn update(&mut self, ctx: &Context<Self>, msg: Self::Message) -> bool {
-        info!("interval");
         match msg {
             Msg::Tick => {
+                debug!("time tick");
                 if self.timer.seconds > 0 {
                     self.timer.seconds -= 1;
                 }
@@ -129,7 +129,7 @@ impl Component for Timer {
                     self.timer.seconds = 59;
                 }
             },
-            Msg::Persistent(data) => info!("{data:?}"),
+            Msg::Persistent(data) => debug!("{data:?}"),
         };
         true
     }

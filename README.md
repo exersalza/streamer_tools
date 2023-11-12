@@ -1,8 +1,23 @@
 # Sup
 
+## Todo
+- [ ] persisten websocket/socket timer for subathon
+- [ ] crash recovery
+- [x] dynamic timer
+- [ ] timer customization
+- [ ] and much much more
 
 ## Installation
 - **First things first DON'T DELETE THE `settings.db`** except you know what you do, in this file is every configuration stored except your twitch token.
+
+
+## Usage
+- Unpack the files into a directory.
+- Start the main file
+- Now a console should open with a link inside, copy & paste that link into your browser, and a Web panel should be visible.
+
+- timers -> `http://localhost:8080/timer/32?hours=232&minutes=23&seconds=33` use this url to create an timer that looks like `232:23:33`
+
 
 ## Development
 ### Deps
