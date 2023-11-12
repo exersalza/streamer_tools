@@ -7,11 +7,12 @@ use axum::{
     response::IntoResponse,
     routing::{get, Router},
 };
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use tokio::fs;
 use clap::Parser;
 use std::net::{IpAddr, Ipv6Addr, SocketAddr};
 use std::str::FromStr;
+use axum::extract::Path as axum_path;
 use axum::response::Html;
 use tower::{ServiceBuilder, ServiceExt};
 use tower_http::services::ServeDir;
@@ -50,11 +51,16 @@ async fn main() {
         std::env::set_var("RUST_LOG", format!("{},hyper=info,mio=info", opt.log_level))
     }
 
+    let sql = Sql::new("./settings.db".to_string());
+
+    sql.get_all_timers();
+
     // enable consolel logging
     tracing_subscriber::fmt::init();
 
     let app: Router = Router::new()
         .route("/api/hello", get(hello))
+        .route("/api/timer/:id", get(timer))
         .route("/api/subathon_timer", get(subathon_timer))
         .fallback_service(get(|req| async move {
             let res = ServeDir::new(&opt.static_dir).oneshot(req).await.unwrap(); // serve dir is infallible
@@ -91,6 +97,35 @@ async fn main() {
 
     log::info!("test");
 }
+
+struct Sql {
+    conn: sqlite::Connection
+}
+
+impl Sql {
+    pub fn new(path: String) -> Self {
+        let conn = sqlite::open(path).unwrap();
+
+        Self { conn }
+    }
+
+    pub fn get_all_timers(&self) -> Vec<(i64, String)> {
+        let query = "select * from timers";
+        let mut statement = self.conn.prepare(query).unwrap();
+        let mut ret: Vec<(i64, String)> = Vec::new();
+
+        while let Ok(sqlite::State::Row) = statement.next() {
+            let item_id = statement.read::<i64, _>("timer_id").unwrap();
+            let time = statement.read::<String, _>("time").unwrap();
+
+            ret.push((item_id, time));
+        }
+
+        ret
+    }
+}
+
+async fn timer(axum_path(id): axum_path<i32>) -> impl IntoResponse {format!("{id}")}
 
 async fn hello() -> impl IntoResponse {
     "hello from da other side"

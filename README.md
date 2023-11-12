@@ -1,6 +1,9 @@
 # Sup
 
 
+## Installation
+- **First things first DON'T DELETE THE `settings.db`** except you know what you do, in this file is every configuration stored except your twitch token.
+
 ## Development
 ### Deps
 - `rustup` -> [Rustup](https://rustup.rs/)

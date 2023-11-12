@@ -91,9 +91,6 @@ enum Route {
     #[at("/timer/:id")]
     Timer {id: i32},
 
-    #[at("/some")]
-    Some,
-
     // #[not_found]
     #[at("/404")]
     NotFound
@@ -102,8 +99,7 @@ enum Route {
 fn switch(routes: Route) -> Html {
     match routes {
         Route::Home => html! {<Base />},
-        Route::Timer { id } => html! {<Timer />},
-        Route::Some => html! {<p>{"fdsa"}</p>},
+        Route::Timer { id } => html! {<Timer timer_id={id} browser=true />},
         Route::NotFound => html! {
             <p class={class("bg-base-light grid place-items-center h-screen w-screen text-text")}>{"404 not found"}</p>}
     }
