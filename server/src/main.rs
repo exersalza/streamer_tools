@@ -16,6 +16,7 @@ use log::debug;
 use serde::Deserialize;
 use sqlite::State;
 use std::net::{IpAddr, Ipv6Addr, SocketAddr};
+use std::num::ParseIntError;
 use std::path::PathBuf;
 use std::str::FromStr;
 use std::sync::Mutex;
@@ -23,6 +24,7 @@ use tokio::fs;
 use tower::{ServiceBuilder, ServiceExt};
 use tower_http::services::ServeDir;
 use tower_http::trace::TraceLayer;
+use tracing::field::debug;
 
 use crate::config::Config;
 use crate::subathon::subathon_timer::subathon_timer;
@@ -202,15 +204,14 @@ pub struct Timer {
 }
 
 impl Timer {
-    pub fn parse(time: String) -> Option<Time> {
+    pub fn parse(time: String) -> Result<Time, ParseIntError> {
         let items: Vec<_> = time.split(':').collect();
 
-        let hours: i32 = items[0].parse::<i32>().unwrap();
-        let minutes: i32 = items[1].parse::<i32>().unwrap();
-        let seconds: i32 = items[2].parse::<i32>().unwrap();
+        let hours: i32 = items[0].parse::<i32>()?;
+        let minutes: i32 = items[1].parse::<i32>()?;
+        let seconds: i32 = items[2].parse::<i32>()?;
 
-
-        Some(Time {hours, minutes, seconds})
+        Ok(Time {hours, minutes, seconds})
     }
 }
 
