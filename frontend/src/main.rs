@@ -2,11 +2,11 @@ use yew::prelude::*;
 use yew_router::prelude::*;
 
 mod components;
-use components::{utils::class, timer::Timer};
+use components::{timer::Timer, utils::class};
 
 struct Streamer {
     name: String,
-    links: Vec<Html>
+    links: Vec<Html>,
 }
 
 struct Base {
@@ -20,12 +20,12 @@ impl Component for Base {
     fn create(_ctx: &Context<Self>) -> Self {
         let links = vec![
             ("https://dashboard.twitch.tv/u/{}/home", "dashboard"),
-            ("https://twitch.tv/{}", "livestream")
+            ("https://twitch.tv/{}", "livestream"),
         ];
 
         let mut streamer = Streamer {
             name: String::from("betrayed"),
-            links: vec![]
+            links: vec![],
         };
 
         for (link, name) in links {
@@ -35,7 +35,7 @@ impl Component for Base {
             });
         }
 
-        Self {streamer}
+        Self { streamer }
     }
 
     fn view(&self, _ctx: &Context<Self>) -> Html {
@@ -79,29 +79,31 @@ impl Component for Base {
     }
 }
 
-
 struct Root {}
-
 
 #[derive(Clone, Routable, PartialEq)]
 enum Route {
     #[at("/")]
     Home,
 
-    #[at("/timer/:id")]
-    Timer {id: i32},
+    #[at("/timer")]
+    TimerClean,
 
-    // #[not_found]
+    #[at("/timer/:id")]
+    Timer { id: i32 },
+
+    #[not_found]
     #[at("/404")]
-    NotFound
+    NotFound,
 }
 
 fn switch(routes: Route) -> Html {
     match routes {
         Route::Home => html! {<Base />},
-        Route::Timer { id } => html! {<Timer timer_id={id} browser=true />},
+        Route::Timer { id } => html! {<Timer timer_id={id} />},
+        Route::TimerClean => html! {<Timer />},
         Route::NotFound => html! {
-            <p class={class("bg-base-light grid place-items-center h-screen w-screen text-text")}>{"404 not found"}</p>}
+        <p class={class("bg-base-light grid place-items-center h-screen w-screen text-text")}>{"404 not found"}</p>},
     }
 }
 
@@ -114,7 +116,6 @@ impl Component for Root {
     }
 
     fn view(&self, ctx: &Context<Self>) -> Html {
-
         html! {
             <BrowserRouter>
                 <Switch<Route> render={switch} />
@@ -128,11 +129,13 @@ fn main() {
 
     // check if prod is on and if set log level to info
     let log_level: log::Level = match dev.parse::<bool>() {
-        Ok(x) => {if x {
-            log::Level::Info
-        } else {
-            log::Level::Debug
-        }},
+        Ok(x) => {
+            if x {
+                log::Level::Info
+            } else {
+                log::Level::Debug
+            }
+        }
         Err(_) => log::Level::Debug,
     };
 

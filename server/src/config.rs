@@ -7,6 +7,7 @@ use serde_derive::Deserialize;
 #[derive(Deserialize)]
 pub struct Config {
     pub twitch: Twitch,
+    pub sql_path: String,
 }
 
 #[derive(Deserialize)]
@@ -42,6 +43,7 @@ impl Config {
                 token: data.twitch.token,
                 channel: data.twitch.channel,
             },
+            sql_path: data.sql_path,
         };
 
         return _config;

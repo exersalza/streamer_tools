@@ -33,7 +33,7 @@
 - `git clone https://github.com/exersalza/streamer_tools`
 - `cd streamer_tools`
 - (win ps7)`cd frontend && .\build -p 1 && cd ..`  to build the frontend
-- (unix)`cd frontend && ./build.sh -p 1 && cd ..` to build the frontend
+- (unix)~~`cd frontend && ./build.sh -p 1 && cd ..`~~ `export PROD="false"; cargo watch -w . -s "tailwind -o ./css/tailwind.css && trunk build` to build the frontend
 - `cargo run --bin server`
 And now you should be able to go on `http://localhost:8080` and see a working website
 

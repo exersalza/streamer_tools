@@ -1,27 +1,35 @@
-mod ws;
+mod config;
 mod subathon;
+mod ws;
 
-use axum::{
-    Json,
-    body::{boxed, Body},
-    http::{Response, StatusCode},
-    response::IntoResponse,
-    routing::{get, Router, post, delete},
-};
-use std::path::{Path, PathBuf};
-use tokio::{fs, task_local};
-use clap::Parser;
-use std::net::{IpAddr, Ipv6Addr, SocketAddr};
-use std::str::FromStr;
-use axum::extract::{Path as axum_path, Query};
+use axum::extract::Path as axum_path;
 use axum::response::Html;
+use axum::{
+    http::StatusCode,
+    response::IntoResponse,
+    routing::{delete, get, post, Router},
+    Json,
+};
+use clap::Parser;
+use lazy_static::lazy_static;
+use log::debug;
+use serde::Deserialize;
+use sqlite::State;
+use std::net::{IpAddr, Ipv6Addr, SocketAddr};
+use std::path::PathBuf;
+use std::str::FromStr;
+use std::sync::Mutex;
+use tokio::fs;
 use tower::{ServiceBuilder, ServiceExt};
 use tower_http::services::ServeDir;
 use tower_http::trace::TraceLayer;
-use serde::Deserialize;
-use tracing_subscriber::fmt::format;
 
+use crate::config::Config;
 use crate::subathon::subathon_timer::subathon_timer;
+
+lazy_static! {
+    static ref CONFIG: Mutex<Config> = Mutex::new(Config::new("./config.toml"));
+}
 
 #[derive(Parser, Debug)]
 #[clap(name = "server", about = "a randomly spawned server")]
@@ -46,7 +54,6 @@ struct Opt {
     config: String,
 }
 
-
 #[tokio::main]
 async fn main() {
     let opt = Opt::parse();
@@ -55,19 +62,21 @@ async fn main() {
         std::env::set_var("RUST_LOG", format!("{},hyper=info,mio=info", opt.log_level))
     }
 
-    let sql = Sql::new("./settings.db".to_string());
+    let sql = Sql::new();
 
-    sql.get_all_timers();
+    let timer_endpoints = Router::new()
+        .route("/api/timer", post(timer_post))
+        .route("/api/timer/:id", get(timer_get))
+        .route("/api/timer/:id", delete(timer_del))
+        .route("/api/get_all_timer", get(timer_get_all))
+        .route("/api/subathon_timer", get(subathon_timer));
 
     // enable consolel logging
     tracing_subscriber::fmt::init();
 
     let app: Router = Router::new()
-        .route("/api/hello", get(hello))
-        .route("/api/timer/:id", get(timer))
-        .route("/api/timer/:id", delete(timer_del))
-        .route("/api/timer", post(timer_post))
-        .route("/api/subathon_timer", get(subathon_timer))
+        .route("/ping", get(pong))
+        .merge(timer_endpoints)
         .fallback_service(get(|req| async move {
             let res = ServeDir::new(&opt.static_dir).oneshot(req).await.unwrap(); // serve dir is infallible
             let status = res.status();
@@ -86,7 +95,6 @@ async fn main() {
                 _ => res.into_response(),
             }
         }))
-
         .layer(ServiceBuilder::new().layer(TraceLayer::new_for_http()));
 
     let addr = SocketAddr::from((
@@ -105,12 +113,14 @@ async fn main() {
 }
 
 struct Sql {
-    conn: sqlite::Connection
+    conn: sqlite::Connection,
 }
 
 impl Sql {
-    pub fn new(path: String) -> Self {
-        let conn = sqlite::open(path).unwrap();
+    pub fn new() -> Self {
+        let cfg = CONFIG.lock().unwrap();
+        debug!("{}", cfg.sql_path.clone());
+        let conn = sqlite::open(cfg.sql_path.clone()).unwrap();
 
         Self { conn }
     }
@@ -130,43 +140,85 @@ impl Sql {
         ret
     }
 
+    /// Create timer with init time and id, already existing timer get overwritten
     pub fn create_timer(&self, timer: Timer) -> i32 {
-        let query = format!("INSERT INTO timers (timer_id, time)
+        let query = format!(
+            "INSERT INTO timers (timer_id, time)
 VALUES ({}, '{}')
 ON CONFLICT (timer_id)
-DO UPDATE SET time = excluded.time;", timer.id, timer.time);
-
+DO UPDATE SET time = excluded.time;",
+            timer.id, timer.time
+        );
 
         self.conn.execute(query).unwrap();
+
+        log::debug!("created {}", timer.id);
 
         timer.id
     }
 
+    /// Delete a timer by its id
     pub fn delete_timer(&self, timer_id: i32) {
         let query = format!("delete from timers where id = {timer_id}");
+
+        self.conn.execute(query).unwrap();
+
+        log::debug!("deleted {}", timer_id);
     }
 
+    /// get the stored time for an id
     pub fn get_time(&self, timer_id: i32) -> Option<Timer> {
-        todo!()
+        let query = format!("select * from timers where timer_id = {timer_id}");
+        let mut statement = self.conn.prepare(query).unwrap();
+        let mut timer = Timer {
+            id: -1,
+            time: "00:00:00".to_string(),
+        };
+
+        while let Ok(State::Row) = statement.next() {
+            timer.id = statement.read::<i64, _>("timer_id").unwrap() as i32;
+            timer.time = statement.read::<String, _>("time").unwrap();
+        }
+
+        // check if we have data
+        if timer.id == -1 {
+            return None;
+        }
+
+        Some(timer)
     }
 }
 
 #[derive(Debug)]
 pub struct Timer {
     id: i32,
-    time: String
+    time: String,
+}
+
+impl Timer {
+    pub fn parse(time: String) -> Self {
+        todo!()
+    }
 }
 
 #[derive(Debug, Deserialize)]
-struct TimerPostData {
+struct TimerPostBody {
     id: i32,
     hours: i32,
     minutes: i32,
-    seconds: i32
+    seconds: i32,
 }
 
-async fn timer(axum_path(id): axum_path<i32>) -> impl IntoResponse {
-    format!("{id}")
+async fn timer_get(axum_path(id): axum_path<i32>) -> impl IntoResponse {
+    let time = Sql::new().get_time(id);
+
+    if time.is_none() {
+        return "No timer".to_string();
+    }
+
+    let timer: Timer = time.unwrap();
+
+    timer.time
 }
 
 async fn timer_del(axum_path(id): axum_path<i32>) -> impl IntoResponse {
@@ -174,13 +226,18 @@ async fn timer_del(axum_path(id): axum_path<i32>) -> impl IntoResponse {
     format!("{id}")
 }
 
-async fn timer_post(Json(data): Json<TimerPostData>) -> impl IntoResponse  {
+async fn timer_post(Json(data): Json<TimerPostBody>) -> impl IntoResponse {
     log::debug!("{data:?}");
     format!("post")
 }
 
-async fn hello() -> impl IntoResponse {
-    "hello from da other side"
+async fn timer_get_all() -> impl IntoResponse {
+    log::debug!("get all timer");
+    "all timer"
+}
+
+async fn pong() -> impl IntoResponse {
+    "Pong"
 }
 
 // Response::builder()

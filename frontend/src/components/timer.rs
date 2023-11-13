@@ -1,39 +1,39 @@
-use std::collections::HashMap;
-use yew::prelude::*;
-use yew::{BaseComponent, Component, Context, Html, html, };
 use gloo_timers::callback::Interval;
 use log::{debug, error, info};
+use std::collections::HashMap;
 use wasm_bindgen_futures::spawn_local;
+use yew::prelude::*;
+use yew::{html, BaseComponent, Component, Context, Html};
 use yew_router::prelude::*;
 
-use super::utils::{class, get, Data, query_parser};
+use super::utils::{class, get, query_parser, Data};
 
 struct Time {
-    hours: u64,
-    minutes: u64,
-    seconds: u64
+    hours: i32,
+    minutes: i32,
+    seconds: i32,
 }
 
 pub struct Timer {
     timer: Time,
-    browser: bool
+    browser: bool,
 }
 
 pub enum Msg {
     Tick,
-    Persistent(Data)
+    Persistent(Data),
 }
 
 #[derive(Properties, PartialEq)]
 pub struct Props {
-    #[prop_or(8)]
-    pub hour: u64,
+    #[prop_or(0)]
+    pub hour: i32,
+
+    #[prop_or(15)]
+    pub minute: i32,
 
     #[prop_or(0)]
-    pub minute: u64,
-
-    #[prop_or(0)]
-    pub second: u64,
+    pub second: i32,
 
     #[prop_or_default]
     pub class: Classes,
@@ -41,13 +41,12 @@ pub struct Props {
     #[prop_or(false)]
     pub persistent: bool,
 
-    #[prop_or(0)]
+    #[prop_or(-1)]
     pub timer_id: i32,
 
     #[prop_or(false)]
     pub browser: bool,
 }
-
 
 impl Component for Timer {
     type Message = Msg;
@@ -58,10 +57,16 @@ impl Component for Timer {
         let location = ctx.link().location();
 
         let f = query_parser(location.unwrap().query_str());
-        let mut query_params: HashMap<String, u64> = HashMap::new();
+        let mut query_params: HashMap<String, i32> = HashMap::new();
+        let mut browser = props.browser;
 
         for (key, value) in f {
-            let value = match value.parse::<u64>() {
+            if key == "browser" {
+                browser = true;
+                continue;
+            }
+
+            let value = match value.parse::<i32>() {
                 Ok(v) => {
                     debug!("{key} {}", (key == "minutes" || key == "seconds"));
                     if (key == "minutes" || key == "seconds") && (v > 60 && v < 0) {
@@ -69,8 +74,11 @@ impl Component for Timer {
                     } else {
                         v
                     }
-                },
-                Err(e) => {error!("error while trying to parse int({key}->{value}) -> {e:?}"); 59},
+                }
+                Err(e) => {
+                    error!("error while trying to parse int({key}->{value}) -> {e:?}");
+                    59
+                }
             };
 
             query_params.insert(key, value);
@@ -94,22 +102,22 @@ impl Component for Timer {
         let timer = Time {
             hours: query_params.get("hours").unwrap_or(&props.hour).clone(),
             minutes: query_params.get("minutes").unwrap_or(&props.minute).clone(),
-            seconds: query_params.get("seconds").unwrap_or(&&props.second).clone()
+            seconds: query_params
+                .get("seconds")
+                .unwrap_or(&&props.second)
+                .clone(),
         };
-
-        let browser = props.browser;
-
 
         let link = ctx.link().clone();
 
+        // just start an infinite loop, maybe put a tick loop on the server and every timer
+        // connects to it via an websocket or something.
         Interval::new(1000, move || {
-           link.callback(|_| Msg::Tick).emit(());
-        }).forget();
+            link.callback(|_| Msg::Tick).emit(());
+        })
+        .forget();
 
-        Self {
-            timer,
-            browser
-        }
+        Self { timer, browser }
     }
 
     fn update(&mut self, ctx: &Context<Self>, msg: Self::Message) -> bool {
@@ -118,17 +126,15 @@ impl Component for Timer {
                 debug!("time tick");
                 if self.timer.seconds > 0 {
                     self.timer.seconds -= 1;
-                }
-                else if self.timer.minutes > 0 {
+                } else if self.timer.minutes > 0 {
                     self.timer.minutes -= 1;
                     self.timer.seconds = 59;
-                }
-                else if self.timer.hours > 0 {
+                } else if self.timer.hours > 0 {
                     self.timer.hours -= 1;
                     self.timer.minutes = 59;
                     self.timer.seconds = 59;
                 }
-            },
+            }
             Msg::Persistent(data) => debug!("{data:?}"),
         };
         true
@@ -139,8 +145,10 @@ impl Component for Timer {
         let mut classes: Classes = class("text-3xl text-text select-none text-left w-12");
 
         classes.extend(external_class.into_iter());
-        let some_condition = true;
-        let time = format!("{:02}:{:02}:{:02}", self.timer.hours, self.timer.minutes, self.timer.seconds);
+        let time = format!(
+            "{:02}:{:02}:{:02}",
+            self.timer.hours, self.timer.minutes, self.timer.seconds
+        );
 
         html! {
             if self.browser {
