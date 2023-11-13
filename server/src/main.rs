@@ -152,7 +152,7 @@ DO UPDATE SET time = excluded.time;",
 
         self.conn.execute(query).unwrap();
 
-        log::debug!("created {}", timer.id);
+        debug!("created {}", timer.id);
 
         timer.id
     }
@@ -163,7 +163,7 @@ DO UPDATE SET time = excluded.time;",
 
         self.conn.execute(query).unwrap();
 
-        log::debug!("deleted {}", timer_id);
+        debug!("deleted {}", timer_id);
     }
 
     /// get the stored time for an id
@@ -189,6 +189,12 @@ DO UPDATE SET time = excluded.time;",
     }
 }
 
+pub struct Time {
+    hours: i32,
+    minutes: i32,
+    seconds: i32
+}
+
 #[derive(Debug)]
 pub struct Timer {
     id: i32,
@@ -196,8 +202,15 @@ pub struct Timer {
 }
 
 impl Timer {
-    pub fn parse(time: String) -> Self {
-        todo!()
+    pub fn parse(time: String) -> Option<Time> {
+        let items: Vec<_> = time.split(':').collect();
+
+        let hours: i32 = items[0].parse::<i32>().unwrap();
+        let minutes: i32 = items[1].parse::<i32>().unwrap();
+        let seconds: i32 = items[2].parse::<i32>().unwrap();
+
+
+        Some(Time {hours, minutes, seconds})
     }
 }
 
@@ -222,17 +235,17 @@ async fn timer_get(axum_path(id): axum_path<i32>) -> impl IntoResponse {
 }
 
 async fn timer_del(axum_path(id): axum_path<i32>) -> impl IntoResponse {
-    log::debug!("del triggers");
+    debug!("del triggers");
     format!("{id}")
 }
 
 async fn timer_post(Json(data): Json<TimerPostBody>) -> impl IntoResponse {
-    log::debug!("{data:?}");
+    debug!("{data:?}");
     format!("post")
 }
 
 async fn timer_get_all() -> impl IntoResponse {
-    log::debug!("get all timer");
+    debug!("get all timer");
     "all timer"
 }
 
