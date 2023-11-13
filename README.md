@@ -32,8 +32,8 @@
 
 - `git clone https://github.com/exersalza/streamer_tools`
 - `cd streamer_tools`
-- (win)`cd frontend && .\build -prod 1 && cd ..`  to build the frontend
-- ~~(unix)`cd frontend && ./build.sh && cd ..` to build the frontend~~ (not up to date with ps1 script)
+- (win ps7)`cd frontend && .\build -p 1 && cd ..`  to build the frontend
+- (unix)`cd frontend && ./build.sh -p 1 && cd ..` to build the frontend
 - `cargo run --bin server`
 And now you should be able to go on `http://localhost:8080` and see a working website
 

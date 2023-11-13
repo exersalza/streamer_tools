@@ -1,11 +1,22 @@
 #!/bin/bash
 
-cargo watch -q -w . -s "tailwind -o ./css/tailwind.css && trunk build"
 
-###  When you want the old method of this script
+while getopts p: flag
+do 
+  case "${flag}" in 
+    p) prod=${OPTARG};;
+  esac
+done
 
-# just to build all the files we'll need
-# tailwind -o ./css/tailwind.css
+export PROD="false"
+tailwind=""
+trunk=""
 
-# start the wasm build
-# trunk build
+if [[ $prod -eq 1 ]]; then
+  export PROD="true"
+  tailwind="--minify"
+  trunk="--release --public-url /"
+fi
+
+cargo watch -x -w . -s "tailwind -o ./css/tailwind.css $tailwind && trunk build $trunk"
+

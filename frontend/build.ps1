@@ -1,12 +1,12 @@
 param (
-    [Boolean]$prod
+    [Boolean]$p
 )
 
 $Env:PROD = "false"
 $tailwind = ""
 $trunk = ""
 
-if ($prod) {
+if ($p) {
     $Env:PROD = "true"
     $tailwind = "--minify"
     $trunk = "--release --public-url /"
