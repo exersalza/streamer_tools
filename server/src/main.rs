@@ -2,6 +2,7 @@ mod config;
 mod subathon;
 mod ws;
 
+use std::collections::HashMap;
 use axum::extract::Path as axum_path;
 use axum::response::Html;
 use axum::{
@@ -12,14 +13,14 @@ use axum::{
 };
 use clap::Parser;
 use lazy_static::lazy_static;
-use log::debug;
-use serde::Deserialize;
+use log::{debug, error};
 use sqlite::State;
 use std::net::{IpAddr, Ipv6Addr, SocketAddr};
 use std::num::ParseIntError;
 use std::path::PathBuf;
 use std::str::FromStr;
 use std::sync::Mutex;
+use serde_derive::{Serialize, Deserialize};
 use tokio::fs;
 use tower::{ServiceBuilder, ServiceExt};
 use tower_http::services::ServeDir;
@@ -161,9 +162,13 @@ DO UPDATE SET time = excluded.time;",
 
     /// Delete a timer by its id
     pub fn delete_timer(&self, timer_id: i32) {
-        let query = format!("delete from timers where id = {timer_id}");
+        let query = format!("delete from timers where timer_id = {timer_id};");
+        debug!("{query}");
 
-        self.conn.execute(query).unwrap();
+        match self.conn.execute(query) {
+            Ok(t) => t,
+            Err(e) => error!("failed to delete {}", timer_id)
+        };
 
         debug!("deleted {}", timer_id);
     }
@@ -237,6 +242,11 @@ struct TimerPostBody {
     seconds: i32,
 }
 
+#[derive(Serialize)]
+struct GetAllResponse {
+    body: HashMap<i64, String>
+}
+
 async fn timer_get(axum_path(id): axum_path<i32>) -> impl IntoResponse {
     let time = Sql::new().get_time(id);
 
@@ -266,7 +276,20 @@ async fn timer_post(Json(data): Json<TimerPostBody>) -> impl IntoResponse {
 
 async fn timer_get_all() -> impl IntoResponse {
     debug!("get all timer");
-    "all timer"
+
+    let timers = Sql::new().get_all_timers();
+    if timers.len() == 0 {
+        return (StatusCode::OK, serde_json::to_string("{}").unwrap());
+    }
+
+    let mut ret: HashMap<i64, String> = HashMap::new();
+
+    for (key, value) in timers {
+        ret.insert(key, value);
+    }
+
+    let ret = GetAllResponse {body: ret};
+    (StatusCode::OK, serde_json::to_string(&ret).expect("Failed to create json"))
 }
 
 async fn pong() -> impl IntoResponse {
