@@ -143,7 +143,7 @@ impl Sql {
     }
 
     /// Create timer with init time and id, already existing timer get overwritten
-    pub fn create_timer(&self, timer: Timer) -> i32 {
+    pub fn create_timer(&self, timer: &Timer) -> i32 {
         let query = format!(
             "INSERT INTO timers (timer_id, time)
 VALUES ({}, '{}')
@@ -204,14 +204,28 @@ pub struct Timer {
 }
 
 impl Timer {
-    pub fn parse(time: String) -> Result<Time, ParseIntError> {
-        let items: Vec<_> = time.split(':').collect();
+    pub fn new() -> Self {
+        Self {
+            id: 0,
+            time: String::from("00:00:00")
+        }
+    }
+
+    pub fn convert_to_time(&self) -> Result<Time, ParseIntError> {
+        let items: Vec<_> = self.time.split(':').collect();
 
         let hours: i32 = items[0].parse::<i32>()?;
         let minutes: i32 = items[1].parse::<i32>()?;
         let seconds: i32 = items[2].parse::<i32>()?;
 
         Ok(Time {hours, minutes, seconds})
+    }
+
+    pub fn convert_and_insert(&mut self, id: i32, hours: i32, minutes: i32, seconds: i32) {
+        let time: String = format!("{hours:02}:{minutes:02}:{seconds:02}");
+
+        self.id = id;
+        self.time = time;
     }
 }
 
@@ -237,12 +251,17 @@ async fn timer_get(axum_path(id): axum_path<i32>) -> impl IntoResponse {
 
 async fn timer_del(axum_path(id): axum_path<i32>) -> impl IntoResponse {
     debug!("del triggers");
+    Sql::new().delete_timer(id);
     format!("{id}")
 }
 
 async fn timer_post(Json(data): Json<TimerPostBody>) -> impl IntoResponse {
-    debug!("{data:?}");
-    format!("post")
+    debug!("post {data:#?}");
+    let mut timer: Timer = Timer::new();
+    timer.convert_and_insert(data.id, data.hours, data.minutes, data.seconds);
+    Sql::new().create_timer(&timer);
+
+    format!("created {}", timer.id)
 }
 
 async fn timer_get_all() -> impl IntoResponse {
