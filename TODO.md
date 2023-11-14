@@ -12,3 +12,8 @@
 - [ ] get ex. 40/60/90 seconds on Sub
 - [ ] get ex. 10 seconds per view on raid or 300 seconds on whole raid
 - [ ] get for each 100 bits 30 seconds
+
+
+
+### Ideas
+- place config file in %appdata% | .config/streamer_tools

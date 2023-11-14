@@ -2,5 +2,5 @@ sql_path = "./settings.db"
 
 [twitch]
 token = ""
-channel = "betrayed"
+channel = ""
 
