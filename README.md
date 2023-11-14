@@ -7,7 +7,7 @@
 - [x] dynamic timer
 - [ ] timer customization
 - [ ] add local time as clock
-- [ ] and much much more
+- [ ] and much much more [todo](./TODO.md)
 
 ## Installation
 - **First things first DON'T DELETE THE `settings.db`** except you know what you do, in this file is every configuration stored except your twitch token.
