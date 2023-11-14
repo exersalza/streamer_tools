@@ -1,6 +1,7 @@
 mod config;
 mod subathon;
 mod ws;
+mod utils;
 
 use std::collections::HashMap;
 use axum::extract::Path as axum_path;
@@ -25,7 +26,6 @@ use tokio::fs;
 use tower::{ServiceBuilder, ServiceExt};
 use tower_http::services::ServeDir;
 use tower_http::trace::TraceLayer;
-use tracing::field::debug;
 
 use crate::config::Config;
 use crate::subathon::subathon_timer::subathon_timer;
@@ -167,7 +167,7 @@ DO UPDATE SET time = excluded.time;",
 
         match self.conn.execute(query) {
             Ok(t) => t,
-            Err(e) => error!("failed to delete {}", timer_id)
+            Err(e) => error!("failed to delete {}, {e}", timer_id)
         };
 
         debug!("deleted {}", timer_id);
@@ -191,6 +191,7 @@ DO UPDATE SET time = excluded.time;",
         if timer.id == -1 {
             return None;
         }
+
 
         Some(timer)
     }
@@ -233,6 +234,7 @@ impl Timer {
         self.time = time;
     }
 }
+
 
 #[derive(Debug, Deserialize)]
 struct TimerPostBody {
