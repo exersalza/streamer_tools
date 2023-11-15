@@ -19,53 +19,41 @@ pub async fn subathon_timer() -> impl IntoResponse {
     addr
 }
 
-
+#[derive()]
 pub struct Tick {
     max: i64,
-    thread_handle: i32,
-    tx: Option<Sender<()>>,
-    rx: Option<Receiver<()>>,
-    task: Option<JoinHandle<()>>,
+    tx: Option<Sender<&'static str>>,
+    rx: Option<Receiver<&'static str>>,
 }
 
 impl Tick {
     pub fn new(max: i64) -> Self {
-        let (tx, rx) = oneshot::channel::<()>();
-        let task = start_loop();
-        Self { max, thread_handle: 32, tx: Some(tx), rx: Some(rx), task: Some(task) }
-    }
-
-    /// starts a new loop when ::new is called
-    fn start_loop(self) -> JoinHandle<()> {
-        let mut l_rx = self.rx.unwrap();
-
-       tokio::spawn(async move {
-            loop {
-                println!("doing some stuff");
-
-                if let Ok(_) = l_rx.try_recv() {
-                    break;
-                }
-
-                sleep(Duration::from_secs(1)).await
-            }
-        })
-    }
-
-    /// kills the loop
-    pub fn kill_loop(&self) {
-        if let Ok(_) = self.tx {
-           self.tx.unwrap().send(());
+        Self {
+            max,
+            tx: None,
+            rx: None,
         }
     }
-}
 
-#[tokio::main]
-async fn main() {
-    let subathon_timer = Tick::new(0);
+    async fn runner(&mut self) {
+        loop {
+            if let Some(rx) = self.rx.as_mut() {
+                match rx.try_recv() {
+                    Ok(_) | Err(tokio::sync::oneshot::error::TryRecvError::Closed) => {
+                        log::debug!("Loop break");
+                        break;
+                    }
+                    _ => {}
+                }
+            }
 
-    let t = tokio::spawn(async {
-        sleep(Duration::from_secs(5)).await;
-        subathon_timer.kill_loop();
-    });
+            sleep(Duration::from_secs(1));
+        }
+    }
+
+    pub async fn start(&mut self) {
+        let (tx, rx) = oneshot::channel::<&'static str>();
+        self.tx = Some(tx);
+        self.rx = Some(rx);
+    }
 }

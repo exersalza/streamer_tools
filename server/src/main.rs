@@ -1,9 +1,8 @@
 mod config;
 mod subathon;
-mod ws;
 mod utils;
+mod ws;
 
-use std::collections::HashMap;
 use axum::extract::Path as axum_path;
 use axum::response::Html;
 use axum::{
@@ -15,20 +14,24 @@ use axum::{
 use clap::Parser;
 use lazy_static::lazy_static;
 use log::{debug, error};
+use serde_derive::{Deserialize, Serialize};
 use sqlite::State;
+use std::collections::HashMap;
 use std::net::{IpAddr, Ipv6Addr, SocketAddr};
 use std::num::ParseIntError;
 use std::path::PathBuf;
 use std::str::FromStr;
 use std::sync::Mutex;
-use serde_derive::{Serialize, Deserialize};
-use tokio::fs;
+use tokio::{
+    fs,
+    time::{sleep, Duration},
+};
 use tower::{ServiceBuilder, ServiceExt};
 use tower_http::services::ServeDir;
 use tower_http::trace::TraceLayer;
 
 use crate::config::Config;
-use crate::subathon::subathon_timer::subathon_timer;
+use crate::subathon::subathon_timer::{subathon_timer, Tick};
 
 lazy_static! {
     static ref CONFIG: Mutex<Config> = Mutex::new(Config::new("./config.toml"));
@@ -59,6 +62,8 @@ struct Opt {
 
 #[tokio::main]
 async fn main() {
+    let subathon = Tick::new(0);
+
     let opt = Opt::parse();
 
     if std::env::var("RUST_LOG").is_err() {
@@ -167,7 +172,7 @@ DO UPDATE SET time = excluded.time;",
 
         match self.conn.execute(query) {
             Ok(t) => t,
-            Err(e) => error!("failed to delete {}, {e}", timer_id)
+            Err(e) => error!("failed to delete {}, {e}", timer_id),
         };
 
         debug!("deleted {}", timer_id);
@@ -192,7 +197,6 @@ DO UPDATE SET time = excluded.time;",
             return None;
         }
 
-
         Some(timer)
     }
 }
@@ -200,7 +204,7 @@ DO UPDATE SET time = excluded.time;",
 pub struct Time {
     hours: i32,
     minutes: i32,
-    seconds: i32
+    seconds: i32,
 }
 
 #[derive(Debug)]
@@ -213,7 +217,7 @@ impl Timer {
     pub fn new() -> Self {
         Self {
             id: 0,
-            time: String::from("00:00:00")
+            time: String::from("00:00:00"),
         }
     }
 
@@ -224,7 +228,11 @@ impl Timer {
         let minutes: i32 = items[1].parse::<i32>()?;
         let seconds: i32 = items[2].parse::<i32>()?;
 
-        Ok(Time {hours, minutes, seconds})
+        Ok(Time {
+            hours,
+            minutes,
+            seconds,
+        })
     }
 
     pub fn convert_and_insert(&mut self, id: i32, hours: i32, minutes: i32, seconds: i32) {
@@ -234,7 +242,6 @@ impl Timer {
         self.time = time;
     }
 }
-
 
 #[derive(Debug, Deserialize)]
 struct TimerPostBody {
@@ -246,7 +253,7 @@ struct TimerPostBody {
 
 #[derive(Serialize)]
 struct GetAllResponse {
-    body: HashMap<i64, String>
+    body: HashMap<i64, String>,
 }
 
 async fn timer_get(axum_path(id): axum_path<i32>) -> impl IntoResponse {
@@ -290,8 +297,11 @@ async fn timer_get_all() -> impl IntoResponse {
         ret.insert(key, value);
     }
 
-    let ret = GetAllResponse {body: ret};
-    (StatusCode::OK, serde_json::to_string(&ret).expect("Failed to create json"))
+    let ret = GetAllResponse { body: ret };
+    (
+        StatusCode::OK,
+        serde_json::to_string(&ret).expect("Failed to create json"),
+    )
 }
 
 async fn pong() -> impl IntoResponse {
