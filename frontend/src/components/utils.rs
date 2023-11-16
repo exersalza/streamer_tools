@@ -1,8 +1,6 @@
 use std::collections::HashMap;
-use log::info;
 use reqwest::Client;
 use yew::{Classes, classes};
-use yew_router::history::Location;
 
 /// Function to create the format for the classes! macro
 pub fn class(class: &str) -> Classes {

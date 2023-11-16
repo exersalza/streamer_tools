@@ -2,16 +2,14 @@ use std::time::Duration;
 
 use axum::response::IntoResponse;
 use rand;
-use rand::Rng;
-use tokio::sync::oneshot;
-use tokio::sync::oneshot::{Receiver, Sender};
-use tokio::task::JoinHandle;
+use tokio::sync::{oneshot, mpsc};
 use tokio::time::sleep;
 
-pub async fn subathon_timer() -> impl IntoResponse {
-    let port = rand::thread_rng().gen_range(50000..50400);
-    let addr = format!("wss://127.0.0.1:{port}");
+const WS_PORT: i32 = 50069;
 
+pub async fn subathon_timer() -> impl IntoResponse {
+    let addr = format!("ws://127.0.0.1:{WS_PORT}");
+    // let (tx, mut rx) = mpsc::channel(32);
     // open ws for the frontend to get
 
     // close ws if there is no connection in the past 5 minutes
@@ -19,41 +17,34 @@ pub async fn subathon_timer() -> impl IntoResponse {
     addr
 }
 
+
 #[derive()]
 pub struct Tick {
     max: i64,
-    tx: Option<Sender<&'static str>>,
-    rx: Option<Receiver<&'static str>>,
+    // tx: Option<Sender<&'static str>>,
+    // rx: Option<Receiver<&'static str>>,
 }
 
 impl Tick {
     pub fn new(max: i64) -> Self {
         Self {
             max,
-            tx: None,
-            rx: None,
+            // tx: None,
+            // rx: None,
         }
     }
 
-    async fn runner(&mut self) {
+    pub async fn runner() {
         loop {
-            if let Some(rx) = self.rx.as_mut() {
-                match rx.try_recv() {
-                    Ok(_) | Err(tokio::sync::oneshot::error::TryRecvError::Closed) => {
-                        log::debug!("Loop break");
-                        break;
-                    }
-                    _ => {}
-                }
-            }
+            log::info!("tiCk");
 
-            sleep(Duration::from_secs(1));
+            sleep(Duration::from_secs(1)).await;
         }
     }
 
-    pub async fn start(&mut self) {
+    pub fn start(&self) {
         let (tx, rx) = oneshot::channel::<&'static str>();
-        self.tx = Some(tx);
-        self.rx = Some(rx);
+
+        tokio::spawn(Self::runner());
     }
 }
