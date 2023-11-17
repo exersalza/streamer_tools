@@ -18,7 +18,5 @@ if [[ $prod -eq 1 ]]; then
   trunk="--release --public-url /"
 fi
 
-cmd="tailwind -o ./css/tailwind.css $tailwind && trunk build $trunk"
-echo $cmd
 
-cargo watch -w . -s \"$cmd\"
+cargo watch -w . -s "tailwind -o ./css/tailwind.css $tailwind && trunk build $trunk"
