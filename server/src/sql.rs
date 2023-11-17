@@ -1,9 +1,22 @@
+use lazy_static::lazy_static;
 use log::{debug, error};
 use sqlite::State;
-use crate::{CONFIG, Timer};
+use std::sync::Mutex;
+
+use crate::config::Config;
+
+lazy_static! {
+    pub static ref CONFIG: Mutex<Config> = Mutex::new(Config::new("./config.toml"));
+}
 
 pub struct Sql {
     conn: sqlite::Connection,
+}
+
+#[derive(Debug)]
+pub struct Timer {
+    pub id: i32,
+    pub time: String,
 }
 
 impl Sql {
@@ -34,9 +47,9 @@ impl Sql {
     pub fn create_timer(&self, timer: &Timer) -> i32 {
         let query = format!(
             "INSERT INTO timers (timer_id, time)
-VALUES ({}, '{}')
-ON CONFLICT (timer_id)
-DO UPDATE SET time = excluded.time;",
+            VALUES ({}, '{}')
+            ON CONFLICT (timer_id)
+            DO UPDATE SET time = excluded.time;",
             timer.id, timer.time
         );
 

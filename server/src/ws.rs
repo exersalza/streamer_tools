@@ -1,11 +1,11 @@
-use std::net::SocketAddr;
 use std::borrow::Cow;
+use std::net::SocketAddr;
 use std::ops::ControlFlow;
 
-use axum::{extract::ws::Message,
-           extract::ws::WebSocket,
-           extract::ws::WebSocketUpgrade,
-           headers, response::IntoResponse, TypedHeader};
+use axum::{
+    extract::ws::Message, extract::ws::WebSocket, extract::ws::WebSocketUpgrade, headers,
+    response::IntoResponse, TypedHeader,
+};
 //allows to extract the IP of connecting user
 use axum::extract::connect_info::ConnectInfo;
 use axum::extract::ws::CloseFrame;
@@ -13,9 +13,10 @@ use axum::extract::ws::CloseFrame;
 use futures::{sink::SinkExt, stream::StreamExt};
 
 pub async fn ws_handler(
-                    ws: WebSocketUpgrade,
-                    user_agent: Option<TypedHeader<headers::UserAgent>>,
-                    ConnectInfo(addr): ConnectInfo<SocketAddr>) -> impl IntoResponse {
+    ws: WebSocketUpgrade,
+    user_agent: Option<TypedHeader<headers::UserAgent>>,
+    ConnectInfo(addr): ConnectInfo<SocketAddr>,
+) -> impl IntoResponse {
     let user_agent = if let Some(TypedHeader(user_agent)) = user_agent {
         user_agent.to_string()
     } else {
@@ -29,7 +30,6 @@ pub async fn ws_handler(
 
 // don't touch my clogs
 
-
 // thanks to the guy that wrote the example in axum/examples
 async fn handle_socket(mut socket: WebSocket, who: SocketAddr) {
     // send a ping (unsupported by some browsers) just to kick things off and get a response
@@ -40,55 +40,21 @@ async fn handle_socket(mut socket: WebSocket, who: SocketAddr) {
         return;
     }
 
-    if let Some(msg) = socket.recv().await {
-        if let Ok(msg) = msg {
-            if process_message(msg, who).is_break() {
-                return;
-            }
-        } else {
-            println!("client {who} abruptly disconnected");
-            return;
-        }
-    }
-
-    // Since each client gets individual statemachine, we can pause handling
-    // when necessary to wait for some external event (in this case illustrated by sleeping).
-    // Waiting for this client to finish getting its greetings does not prevent other clients from
-    // connecting to server and receiving their greetings.
-    for i in 1..5 {
-        if socket
-            .send(Message::Text(format!("Hi {i} times!")))
-            .await
-            .is_err()
-        {
-            println!("client {who} abruptly disconnected");
-            return;
-        }
-        tokio::time::sleep(std::time::Duration::from_millis(100)).await;
-    }
-
-    // By splitting socket we can send and receive at the same time. In this example we will send
-    // unsolicited messages to client based on some sort of server's internal event (i.e .timer).
-    let (mut sender, mut receiver) = socket.split();
+    let (mut tx, _rx) = socket.split();
 
     // Spawn a task that will push several messages to the client (does not matter what client does)
-    let mut send_task = tokio::spawn(async move {
-        let n_msg = 20;
-        for i in 0..n_msg {
+    tokio::spawn(async move {
+        loop {
             // In case of any websocket error, we exit.
-            if sender
-                .send(Message::Text(format!("Server message {i} ...")))
-                .await
-                .is_err()
-            {
-                return i;
+            if tx.send(Message::Text(format!("inc"))).await.is_err() {
+                break;
             }
 
-            tokio::time::sleep(std::time::Duration::from_millis(300)).await;
+            tokio::time::sleep(std::time::Duration::from_millis(1000)).await;
         }
 
-        println!("Sending close to {who}...");
-        if let Err(e) = sender
+        log::info!("Sending close to {who}...");
+        if let Err(e) = tx
             .send(Message::Close(Some(CloseFrame {
                 code: axum::extract::ws::close_code::NORMAL,
                 reason: Cow::from("Goodbye"),
@@ -97,7 +63,6 @@ async fn handle_socket(mut socket: WebSocket, who: SocketAddr) {
         {
             println!("Could not send Close due to {e}, probably it is ok?");
         }
-        n_msg
     });
 }
 

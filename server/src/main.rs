@@ -1,40 +1,37 @@
 mod config;
+mod sql;
 mod subathon;
 mod utils;
-mod sql;
 mod ws;
 
 use axum::extract::Path as axum_path;
 use axum::response::Html;
 use axum::{
     http::StatusCode,
-    Json,
     response::IntoResponse,
     routing::{delete, get, post, Router},
+    Json,
 };
 use clap::Parser;
-use lazy_static::lazy_static;
 use log::debug;
 use serde_derive::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr};
+use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::num::ParseIntError;
 use std::path::PathBuf;
 use std::str::FromStr;
-use std::sync::Mutex;
 use tokio::fs;
 use tower::{ServiceBuilder, ServiceExt};
 use tower_http::services::ServeDir;
 use tower_http::trace::TraceLayer;
 
-use crate::config::Config;
+use crate::sql::{Sql, Timer, CONFIG};
 use crate::subathon::subathon_timer::{subathon_timer, Tick};
-use crate::sql::Sql;
 use crate::ws::ws_handler;
 
-lazy_static! {
-    pub static ref CONFIG: Mutex<Config> = Mutex::new(Config::new("./config.toml"));
-}
+// lazy_static! {
+//     pub static ref CONFIG: Mutex<Config> = Mutex::new(Config::new("./config.toml"));
+// }
 
 #[derive(Parser, Debug)]
 #[clap(name = "server", about = "a randomly spawned server")]
@@ -43,7 +40,7 @@ struct Opt {
     log_level: String,
 
     /// Set the listen address
-    #[clap(short = 'a', long = "addr", default_value = "::1")]
+    #[clap(short = 'a', long = "addr", default_value = "127.0.0.1")]
     addr: String,
 
     /// Set the port
@@ -124,12 +121,6 @@ pub struct Time {
     hours: i32,
     minutes: i32,
     seconds: i32,
-}
-
-#[derive(Debug)]
-pub struct Timer {
-    id: i32,
-    time: String,
 }
 
 impl Timer {
@@ -222,6 +213,8 @@ async fn timer_get_all() -> impl IntoResponse {
         serde_json::to_string(&ret).expect("Failed to create json"),
     )
 }
+
+async fn timer_update(axum_path(id): axum_path<i32>) -> impl IntoResponse {}
 
 async fn pong() -> impl IntoResponse {
     "Pong"

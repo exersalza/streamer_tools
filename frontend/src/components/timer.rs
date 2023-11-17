@@ -1,9 +1,12 @@
+use futures::{SinkExt, StreamExt};
+use gloo_net::websocket;
+use gloo_net::websocket::futures::WebSocket;
 use gloo_timers::callback::Interval;
-use log::{debug, error, info};
+use log::{debug, error};
 use std::collections::HashMap;
 use wasm_bindgen_futures::spawn_local;
 use yew::prelude::*;
-use yew::{html, BaseComponent, Component, Context, Html};
+use yew::{html, Component, Context, Html};
 use yew_router::prelude::*;
 
 use super::utils::{class, get, query_parser, Data};
@@ -112,15 +115,22 @@ impl Component for Timer {
 
         // just start an infinite loop, maybe put a tick loop on the server and every timer
         // connects to it via an websocket or something.
-        Interval::new(1000, move || {
-            link.callback(|_| Msg::Tick).emit(());
-        })
-        .forget();
+        // Interval::new(1000, move || {}).forget();
+
+        let mut ws = WebSocket::open("ws://127.0.0.1:8080/ws").unwrap();
+        let (mut tx, mut rx) = ws.split();
+
+        spawn_local(async move {
+            while let Some(msg) = rx.next().await {
+                log::info!("{msg:?}");
+            }
+            log::info!("websocket closed");
+        });
 
         Self { timer, browser }
     }
 
-    fn update(&mut self, ctx: &Context<Self>, msg: Self::Message) -> bool {
+    fn update(&mut self, _ctx: &Context<Self>, msg: Self::Message) -> bool {
         match msg {
             Msg::Tick => {
                 debug!("time tick");
