@@ -4,7 +4,7 @@
 ## Todo
 - [ ] persisten websocket/socket timer for subathon
 - [ ] crash recovery
-- [x] dynamic timer
+- [x] dynamic timer -> localhost:8080/timer/:id?hours=&minutes=&seconds=
 - [ ] timer customization
 - [ ] add local time as clock
 - [ ] and much much more [todo](./TODO.md)
@@ -25,6 +25,8 @@
 ### Deps
 - `rustup` -> [Rustup](https://rustup.rs/)
 - `trunk` -> `cargo install trunk`
+- `cargo-watch` -> `cargo install cargo-watch`
+- `tailwindcss` -> `npm i -g tailwindcss`
 - `wasm` -> `rustup target add wasm32-unknown-unknown`
 - `powershell 7.* (only win)` -> [PowerShell 7](https://learn.microsoft.com/en-us/powershell/scripting/install/installing-powershell-on-windows?view=powershell-7.3) 
 
@@ -32,8 +34,8 @@
 
 - `git clone https://github.com/exersalza/streamer_tools`
 - `cd streamer_tools`
-- (win ps7)`cd frontend && .\build -p 1 && cd ..`  to build the frontend
-- (unix)~~`cd frontend && ./build.sh -p 1 && cd ..`~~ `export PROD="false"; cargo watch -w . -s "tailwind -o ./css/tailwind.css && trunk build` to build the frontend
+- (win ps7)`cd frontend && .\build -p 1 && cd ..` to build the frontend
+- (unix)`cd frontend && ./build.sh -p 1 && cd ..` to build the frontend
 - `cargo run --bin server`
 And now you should be able to go on `http://localhost:8080` and see a working website
 
