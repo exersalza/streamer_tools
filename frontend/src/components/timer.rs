@@ -1,6 +1,6 @@
 use futures::{SinkExt, StreamExt};
-use gloo_net::websocket;
 use gloo_net::websocket::futures::WebSocket;
+use gloo_net::websocket::{self, Message};
 use gloo_timers::callback::Interval;
 use log::{debug, error};
 use std::collections::HashMap;
@@ -8,6 +8,8 @@ use wasm_bindgen_futures::spawn_local;
 use yew::prelude::*;
 use yew::{html, Component, Context, Html};
 use yew_router::prelude::*;
+
+use crate::components::utils::type_of;
 
 use super::utils::{class, get, query_parser, Data};
 
@@ -23,7 +25,7 @@ pub struct Timer {
 }
 
 pub enum Msg {
-    Tick,
+    Tick(String),
     Persistent(Data),
 }
 
@@ -122,9 +124,24 @@ impl Component for Timer {
 
         spawn_local(async move {
             while let Some(msg) = rx.next().await {
-                log::info!("{msg:?}");
+                let t: Message = match msg {
+                    Ok(t) => {
+                        log::debug!("{:?}", t);
+                        t
+                    }
+                    Err(_) => Message::Text("f".to_string()),
+                };
+
+                match &t {
+                    Message::Text(msg) => {
+                        log::debug!("He is the father: {msg}")
+                    }
+                    Message::Bytes(x) => log::debug!("{:?}", x),
+                };
+
+                link.send_message(Msg::Tick("inc".to_string()));
             }
-            log::info!("websocket closed");
+            log::debug!("websocket closed");
         });
 
         Self { timer, browser }
@@ -132,7 +149,7 @@ impl Component for Timer {
 
     fn update(&mut self, _ctx: &Context<Self>, msg: Self::Message) -> bool {
         match msg {
-            Msg::Tick => {
+            Msg::Tick(t) => {
                 debug!("time tick");
                 if self.timer.seconds > 0 {
                     self.timer.seconds -= 1;

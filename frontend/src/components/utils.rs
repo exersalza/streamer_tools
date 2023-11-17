@@ -1,6 +1,6 @@
-use std::collections::HashMap;
 use reqwest::Client;
-use yew::{Classes, classes};
+use std::collections::HashMap;
+use yew::{classes, Classes};
 
 /// Function to create the format for the classes! macro
 pub fn class(class: &str) -> Classes {
@@ -20,7 +20,7 @@ pub struct Data {
     pub data: String,
 }
 
-pub fn query_parser(loc: &str) -> HashMap<String, String>{
+pub fn query_parser(loc: &str) -> HashMap<String, String> {
     let query_clean = loc.replace("?", "");
     let query_map = query_clean.split('&');
     let mut ret: HashMap<String, String> = HashMap::new();
@@ -32,5 +32,8 @@ pub fn query_parser(loc: &str) -> HashMap<String, String>{
     }
 
     ret
+}
 
+pub fn type_of<T>(_: T) -> &'static str {
+    std::any::type_name::<T>()
 }
