@@ -1,5 +1,7 @@
-use reqwest::Client;
+use reqwest;
 use std::collections::HashMap;
+use log::debug;
+use reqwest::header::HeaderMap;
 use yew::{classes, Classes};
 
 /// Function to create the format for the classes! macro
@@ -9,8 +11,11 @@ pub fn class(class: &str) -> Classes {
 
 /// Simple http get function
 pub async fn get(url: &str) -> Result<String, reqwest::Error> {
-    let client = Client::new();
-    let response = client.get(url).send().await?;
+    let client = reqwest::Client::new();
+    let response = client
+        .get(url)
+        .send()
+        .await?;
     let text = response.text().await?;
     Ok(text)
 }

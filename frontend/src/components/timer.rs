@@ -2,7 +2,7 @@ use futures::{SinkExt, StreamExt};
 use gloo_net::websocket::futures::WebSocket;
 use gloo_net::websocket::{self, Message};
 use gloo_timers::callback::Interval;
-use log::{debug, error};
+use log::{debug, error, info};
 use std::collections::HashMap;
 use wasm_bindgen_futures::spawn_local;
 use yew::prelude::*;
@@ -53,6 +53,29 @@ pub struct Props {
     pub browser: bool,
 }
 
+impl Time {
+    fn new(hours: i32, minutes: i32, seconds: i32) -> Self {
+        Self {
+            hours, minutes, seconds
+        }
+    }
+
+    /// Convert seconds into the struct, can be used as constructor
+    fn from_seconds(sec: i32) -> Self {
+        let seconds = sec % 60;
+        let minutes = (sec / 60) % 60;
+        let hours = (sec / 60) / 60;
+
+        Self {hours, minutes, seconds}
+    }
+
+    /// Convert the Time structs elements to seconds
+    fn to_seconds(&self) -> i32 {
+        // conversion from above but reversed and minified
+        (self.hours * (60 * 60)) + (self.minutes * 60) + self.seconds
+    }
+}
+
 impl Component for Timer {
     type Message = Msg;
     type Properties = Props;
@@ -65,6 +88,7 @@ impl Component for Timer {
         let mut query_params: HashMap<String, i32> = HashMap::new();
         let mut browser = props.browser;
 
+        // parse ?=arguments
         for (key, value) in f {
             if key == "browser" {
                 browser = true;
@@ -73,7 +97,6 @@ impl Component for Timer {
 
             let value = match value.parse::<i32>() {
                 Ok(v) => {
-                    debug!("{key} {}", (key == "minutes" || key == "seconds"));
                     if (key == "minutes" || key == "seconds") && (v > 60 && v < 0) {
                         59
                     } else {
@@ -93,10 +116,11 @@ impl Component for Timer {
             let link = ctx.link().clone();
 
             spawn_local(async move {
-                match get("http://localhost:8080/api/subathon_timer").await {
-                    Ok(response_data) => link.send_message(Msg::Persistent(Data {
-                        data: response_data,
-                    })),
+                // /api/timer/6969 is a special timer that is allocated for the subathon timer
+                match get("http://localhost:8080/api/timer/6969").await {
+                    Ok(response_data) => {link.send_message(Msg::Persistent(Data {
+                        data: response_data.clone(),
+                    }))},
                     Err(e) => {
                         error!("{e}")
                     }
@@ -104,13 +128,19 @@ impl Component for Timer {
             });
         }
 
-        let timer = Time {
-            hours: query_params.get("hours").unwrap_or(&props.hour).clone(),
-            minutes: query_params.get("minutes").unwrap_or(&props.minute).clone(),
-            seconds: query_params
-                .get("seconds")
-                .unwrap_or(&&props.second)
-                .clone(),
+        let timer: Time = if query_params.get("delta").is_some() {
+            let delta = query_params["delta"];
+            Time::from_seconds(delta)
+
+        } else {
+            Time {
+                hours: query_params.get("hours").unwrap_or(&props.hour).clone(),
+                minutes: query_params.get("minutes").unwrap_or(&props.minute).clone(),
+                seconds: query_params
+                    .get("seconds")
+                    .unwrap_or(&props.second)
+                    .clone()
+            }
         };
 
         let link = ctx.link().clone();
@@ -126,22 +156,21 @@ impl Component for Timer {
             while let Some(msg) = rx.next().await {
                 let t: Message = match msg {
                     Ok(t) => {
-                        log::debug!("{:?}", t);
                         t
                     }
                     Err(_) => Message::Text("f".to_string()),
                 };
 
-                match &t {
+                let t =  match &t {
                     Message::Text(msg) => {
-                        log::debug!("He is the father: {msg}")
+                        msg
                     }
-                    Message::Bytes(x) => log::debug!("{:?}", x),
+                    Message::Bytes(_) => "000000000",
                 };
 
-                link.send_message(Msg::Tick("inc".to_string()));
+                link.send_message(Msg::Tick(t.to_string()));
             }
-            log::debug!("websocket closed");
+            debug!("websocket closed");
         });
 
         Self { timer, browser }
@@ -150,7 +179,7 @@ impl Component for Timer {
     fn update(&mut self, _ctx: &Context<Self>, msg: Self::Message) -> bool {
         match msg {
             Msg::Tick(t) => {
-                debug!("time tick");
+                debug!("time tick, {t}");
                 if self.timer.seconds > 0 {
                     self.timer.seconds -= 1;
                 } else if self.timer.minutes > 0 {
@@ -162,7 +191,7 @@ impl Component for Timer {
                     self.timer.seconds = 59;
                 }
             }
-            Msg::Persistent(data) => debug!("{data:?}"),
+            Msg::Persistent(data) => info!("{data:?}"),
         };
         true
     }

@@ -3,7 +3,8 @@ use std::net::SocketAddr;
 use std::ops::ControlFlow;
 
 use axum::{
-    extract::ws::Message, extract::ws::WebSocket, extract::ws::WebSocketUpgrade, headers,
+    extract::ws::{Message, WebSocket, WebSocketUpgrade},
+    headers,
     response::IntoResponse, TypedHeader,
 };
 //allows to extract the IP of connecting user

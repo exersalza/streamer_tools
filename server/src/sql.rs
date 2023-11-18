@@ -2,6 +2,7 @@ use lazy_static::lazy_static;
 use log::{debug, error};
 use sqlite::State;
 use std::sync::Mutex;
+use serde_derive::Serialize;
 
 use crate::config::Config;
 
@@ -13,7 +14,7 @@ pub struct Sql {
     conn: sqlite::Connection,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize)]
 pub struct Timer {
     pub id: i32,
     pub time: String,

@@ -22,6 +22,7 @@ use std::path::PathBuf;
 use std::str::FromStr;
 use tokio::fs;
 use tower::{ServiceBuilder, ServiceExt};
+use tower_http::cors::{Any, CorsLayer};
 use tower_http::services::ServeDir;
 use tower_http::trace::TraceLayer;
 
@@ -40,7 +41,7 @@ struct Opt {
     log_level: String,
 
     /// Set the listen address
-    #[clap(short = 'a', long = "addr", default_value = "127.0.0.1")]
+    #[clap(short = 'a', long = "addr", default_value = "localhost")]
     addr: String,
 
     /// Set the port
@@ -75,6 +76,12 @@ async fn main() {
         .route("/api/get_all_timer", get(timer_get_all))
         .route("/api/subathon_timer", get(subathon_timer));
 
+    let cors = CorsLayer::new()
+        .allow_methods(Any) // Allow all methods
+        .allow_origin(Any) // Allow all origins
+        .allow_headers(Any) // Allow all headers
+        .expose_headers(Any);
+
     // enable consolel logging
     tracing_subscriber::fmt::init();
 
@@ -82,6 +89,7 @@ async fn main() {
         .route("/ping", get(pong))
         .route("/ws", get(ws_handler))
         .merge(timer_endpoints)
+        .layer(cors)
         .fallback_service(get(|req| async move {
             let res = ServeDir::new(&opt.static_dir).oneshot(req).await.unwrap(); // serve dir is infallible
             let status = res.status();
@@ -175,7 +183,7 @@ async fn timer_get(axum_path(id): axum_path<i32>) -> impl IntoResponse {
 
     let timer: Timer = time.unwrap();
 
-    timer.time
+    serde_json::to_string(&timer).unwrap()
 }
 
 async fn timer_del(axum_path(id): axum_path<i32>) -> impl IntoResponse {

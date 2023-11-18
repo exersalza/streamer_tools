@@ -5,10 +5,10 @@ use rand;
 use tokio::sync::{oneshot, mpsc};
 use tokio::time::sleep;
 
-const WS_PORT: i32 = 50069;
+const WS_PORT: i32 = 8080;
 
 pub async fn subathon_timer() -> impl IntoResponse {
-    let addr = format!("ws://127.0.0.1:{WS_PORT}");
+    let addr = format!("ws://127.0.0.1:{WS_PORT}/ws");
     // let (tx, mut rx) = mpsc::channel(32);
     // open ws for the frontend to get
 
