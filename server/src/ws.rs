@@ -41,13 +41,19 @@ async fn handle_socket(mut socket: WebSocket, who: SocketAddr) {
         return;
     }
 
+
+    // we need something to defer what type the timer is, if it's an subathon timer we also have
+    // to create a new thread that handles twitch and stuff
     let (mut tx, _rx) = socket.split();
 
     // Spawn a task that will push several messages to the client (does not matter what client does)
     tokio::spawn(async move {
         loop {
             // In case of any websocket error, we exit.
-            if tx.send(Message::Text(format!("inc"))).await.is_err() {
+
+            // send a "dec" to every timer every seconds
+            if tx.send(Message::Text(format!("dec"))).await.is_err() {
+                log::info!("{who} broke connection");
                 break;
             }
 

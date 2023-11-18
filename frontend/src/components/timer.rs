@@ -21,6 +21,7 @@ struct Time {
 
 pub struct Timer {
     timer: Time,
+    id: i32,
     browser: bool,
 }
 
@@ -46,7 +47,7 @@ pub struct Props {
     #[prop_or(false)]
     pub persistent: bool,
 
-    #[prop_or(-1)]
+    #[prop_or(0)]
     pub timer_id: i32,
 
     #[prop_or(false)]
@@ -87,11 +88,12 @@ impl Component for Timer {
         let f = query_parser(location.unwrap().query_str());
         let mut query_params: HashMap<String, i32> = HashMap::new();
         let mut browser = props.browser;
+        let mut id = props.timer_id;
 
         // parse ?=arguments
         for (key, value) in f {
             if key == "browser" {
-                browser = true;
+                browser = value == "true";
                 continue;
             }
 
@@ -112,14 +114,18 @@ impl Component for Timer {
             query_params.insert(key, value);
         }
 
+
         if props.persistent {
             let link = ctx.link().clone();
 
             spawn_local(async move {
                 // /api/timer/6969 is a special timer that is allocated for the subathon timer
-                match get("http://localhost:8080/api/timer/6969").await {
+                let client = reqwest::Client::new();
+
+                match client.get("http://localhost:8080/api/timer/6969").send().await {
                     Ok(response_data) => {link.send_message(Msg::Persistent(Data {
-                        data: response_data.clone(),
+                        // maybe implement more verbose fallback here
+                        data: response_data.text().await.unwrap_or("0000000".to_string()).clone(),
                     }))},
                     Err(e) => {
                         error!("{e}")
@@ -154,18 +160,14 @@ impl Component for Timer {
 
         spawn_local(async move {
             while let Some(msg) = rx.next().await {
-                let t: Message = match msg {
+                let t: String = match msg {
                     Ok(t) => {
-                        t
+                        match t {
+                            Message::Text(msg) => msg,
+                            _ => "00".to_string()
+                        }
                     }
-                    Err(_) => Message::Text("f".to_string()),
-                };
-
-                let t =  match &t {
-                    Message::Text(msg) => {
-                        msg
-                    }
-                    Message::Bytes(_) => "000000000",
+                    Err(_) => "f".to_string(),
                 };
 
                 link.send_message(Msg::Tick(t.to_string()));
@@ -173,13 +175,19 @@ impl Component for Timer {
             debug!("websocket closed");
         });
 
-        Self { timer, browser }
+        Self { timer, browser, id }
     }
 
     fn update(&mut self, _ctx: &Context<Self>, msg: Self::Message) -> bool {
         match msg {
             Msg::Tick(t) => {
                 debug!("time tick, {t}");
+
+                if t == "inc" && self.id == 6969  {
+                    // implement function to parse seconds to Time
+                    return true;
+                }
+
                 if self.timer.seconds > 0 {
                     self.timer.seconds -= 1;
                 } else if self.timer.minutes > 0 {
