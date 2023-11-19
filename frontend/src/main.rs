@@ -1,8 +1,10 @@
+use log::info;
 use yew::prelude::*;
 use yew_router::prelude::*;
 
-mod components;
 use components::{timer::Timer, utils::class};
+
+mod components;
 
 struct Streamer {
     name: String,
@@ -11,10 +13,15 @@ struct Streamer {
 
 struct Base {
     streamer: Streamer,
+    paused: bool
+}
+
+enum Msg {
+    ButtonClick
 }
 
 impl Component for Base {
-    type Message = ();
+    type Message = Msg;
     type Properties = ();
 
     fn create(_ctx: &Context<Self>) -> Self {
@@ -35,10 +42,21 @@ impl Component for Base {
             });
         }
 
-        Self { streamer }
+        let paused = false;
+
+        Self { streamer, paused }
     }
 
-    fn view(&self, _ctx: &Context<Self>) -> Html {
+    fn update(&mut self, ctx: &Context<Self>, msg: Self::Message) -> bool {
+        match msg {
+            Msg::ButtonClick => self.paused = !self.paused
+        }
+        true
+    }
+
+    fn view(&self, ctx: &Context<Self>) -> Html {
+        let onclick = ctx.link().callback(|_| Msg::ButtonClick);
+
         html! {
             <div>
                 // find the center of the screen
@@ -61,9 +79,8 @@ impl Component for Base {
                     </div>
                     // top right / nav??
                     <div class={class("bg-base-light flex")}>
-
-                        <Timer hour=5 minute=2 class={class("relative left-[33%] top-4")} />
-                        <Timer persistent=true />
+                        <Timer paused={&self.paused} hour=5 minute=2 class={class("relative left-[33%] top-4")} />
+                        <Timer timer_id=6969 ftype="inc" /> // we do a little bit of trolling here
                     </div>
                     // bottom left / item list
                     <div class={class("bg-base-light")}>
@@ -71,7 +88,7 @@ impl Component for Base {
                     </div>
                     // bottom right / body shows first item when created
                     <div class={class("bg-base rounded-tl-xl")}>
-
+                        <button class={class("text-text")} onclick={onclick}>{"Pause timer"}</button>
                     </div>
                 </div>
             </div>
@@ -93,11 +110,12 @@ enum Route {
     Timer { id: i32 },
 
     #[not_found]
-    #[at("/404")]
+    #[at("/404")] // I hate it when you go outside and someone randomly throws a fridge at you
     NotFound,
 }
 
 fn switch(routes: Route) -> Html {
+    let paused: Callback<bool> = Callback::from(move |_| {info!("paused")});
     match routes {
         Route::Home => html! {<Base />},
         Route::Timer { id } => html! {<Timer timer_id={id} />},

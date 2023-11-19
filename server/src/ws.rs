@@ -9,14 +9,15 @@ use axum::{
 };
 //allows to extract the IP of connecting user
 use axum::extract::connect_info::ConnectInfo;
+use axum::extract::Path;
 use axum::extract::ws::CloseFrame;
 //allows to split the websocket stream into separate TX and RX branches
 use futures::{sink::SinkExt, stream::StreamExt};
 
-pub async fn ws_handler(
-    ws: WebSocketUpgrade,
-    user_agent: Option<TypedHeader<headers::UserAgent>>,
-    ConnectInfo(addr): ConnectInfo<SocketAddr>,
+pub async fn ws_handler(Path(t): Path<String>,
+                        ws: WebSocketUpgrade,
+                        user_agent: Option<TypedHeader<headers::UserAgent>>,
+                        ConnectInfo(addr): ConnectInfo<SocketAddr>,
 ) -> impl IntoResponse {
     let user_agent = if let Some(TypedHeader(user_agent)) = user_agent {
         user_agent.to_string()
@@ -26,13 +27,13 @@ pub async fn ws_handler(
 
     log::info!("Useragent {}, at {}", user_agent, addr);
 
-    ws.on_upgrade(move |socket| handle_socket(socket, addr))
+    ws.on_upgrade(move |socket| handle_socket(socket, addr, t))
 }
 
 // don't touch my clogs
 
 // thanks to the guy that wrote the example in axum/examples
-async fn handle_socket(mut socket: WebSocket, who: SocketAddr) {
+async fn handle_socket(mut socket: WebSocket, who: SocketAddr, _type: String) {
     // send a ping (unsupported by some browsers) just to kick things off and get a response
     if socket.send(Message::Ping(vec![1, 2, 3])).await.is_ok() {
         log::info!("Pinged {who}...");
@@ -52,7 +53,7 @@ async fn handle_socket(mut socket: WebSocket, who: SocketAddr) {
             // In case of any websocket error, we exit.
 
             // send a "dec" to every timer every seconds
-            if tx.send(Message::Text(format!("dec"))).await.is_err() {
+            if tx.send(Message::Text("tick".to_string())).await.is_err() {
                 log::info!("{who} broke connection");
                 break;
             }

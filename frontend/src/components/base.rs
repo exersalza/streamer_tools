@@ -1,4 +1,1 @@
-use yew::prelude::*;
-
-struct Base {
-}
+struct Base {}

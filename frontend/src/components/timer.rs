@@ -1,17 +1,21 @@
-use futures::{SinkExt, StreamExt};
-use gloo_net::websocket::futures::WebSocket;
-use gloo_net::websocket::{self, Message};
-use gloo_timers::callback::Interval;
-use log::{debug, error, info};
 use std::collections::HashMap;
+use std::num::ParseIntError;
+
+use futures::{SinkExt, StreamExt};
+use gloo_net::websocket::Message;
+use gloo_net::websocket::futures::WebSocket;
+use log::{debug, error, info};
 use wasm_bindgen_futures::spawn_local;
+use yew::{Component, Context, html, Html};
 use yew::prelude::*;
-use yew::{html, Component, Context, Html};
 use yew_router::prelude::*;
 
-use crate::components::utils::type_of;
+use super::utils::{class, Data, query_parser};
 
-use super::utils::{class, get, query_parser, Data};
+pub enum Msg {
+    Tick(String),
+    Persistent(Data),
+}
 
 struct Time {
     hours: i32,
@@ -25,11 +29,6 @@ pub struct Timer {
     browser: bool,
 }
 
-pub enum Msg {
-    Tick(String),
-    Persistent(Data),
-}
-
 #[derive(Properties, PartialEq)]
 pub struct Props {
     #[prop_or(0)]
@@ -41,33 +40,42 @@ pub struct Props {
     #[prop_or(0)]
     pub second: i32,
 
+    #[prop_or(0)]
+    pub delta: i32,
+
     #[prop_or_default]
     pub class: Classes,
-
-    #[prop_or(false)]
-    pub persistent: bool,
 
     #[prop_or(0)]
     pub timer_id: i32,
 
     #[prop_or(false)]
     pub browser: bool,
+
+    #[prop_or("dec".to_string())]
+    pub ftype: String,
+
+    #[prop_or(false)]
+    pub paused: bool,
+
 }
 
 impl Time {
     fn new(hours: i32, minutes: i32, seconds: i32) -> Self {
         Self {
-            hours, minutes, seconds
+            hours,
+            minutes,
+            seconds,
         }
     }
 
-    /// Convert seconds into the struct, can be used as constructor
-    fn from_seconds(sec: i32) -> Self {
+    /// Construct from seconds
+    fn from(sec: i32) -> Self {
         let seconds = sec % 60;
         let minutes = (sec / 60) % 60;
         let hours = (sec / 60) / 60;
 
-        Self {hours, minutes, seconds}
+        Self { hours, minutes, seconds }
     }
 
     /// Convert the Time structs elements to seconds
@@ -75,8 +83,36 @@ impl Time {
         // conversion from above but reversed and minified
         (self.hours * (60 * 60)) + (self.minutes * 60) + self.seconds
     }
+
+    pub fn from_time(timer: String) -> Result<Self, ParseIntError> {
+        let items: Vec<_> = timer.split(':').collect();
+
+        let hours: i32 = items[0].parse::<i32>()?;
+        let minutes: i32 = items[1].parse::<i32>()?;
+        let seconds: i32 = items[2].parse::<i32>()?;
+
+        Ok(Self::new(hours, minutes, seconds))
+    }
 }
 
+impl Timer {
+    pub fn new() -> Self {
+        Self {
+            id: 0,
+            timer: Time::from(0),
+            browser: false,
+        }
+    }
+
+    pub fn convert_and_insert(&mut self, id: i32, hours: i32, minutes: i32, seconds: i32) {
+        let time: String = format!("{hours:02}:{minutes:02}:{seconds:02}");
+
+        self.id = id;
+        self.timer = Time::from_time(time).unwrap();
+    }
+}
+
+// COMPONENT SECTION
 impl Component for Timer {
     type Message = Msg;
     type Properties = Props;
@@ -115,29 +151,9 @@ impl Component for Timer {
         }
 
 
-        if props.persistent {
-            let link = ctx.link().clone();
-
-            spawn_local(async move {
-                // /api/timer/6969 is a special timer that is allocated for the subathon timer
-                let client = reqwest::Client::new();
-
-                match client.get("http://localhost:8080/api/timer/6969").send().await {
-                    Ok(response_data) => {link.send_message(Msg::Persistent(Data {
-                        // maybe implement more verbose fallback here
-                        data: response_data.text().await.unwrap_or("0000000".to_string()).clone(),
-                    }))},
-                    Err(e) => {
-                        error!("{e}")
-                    }
-                };
-            });
-        }
-
-        let timer: Time = if query_params.get("delta").is_some() {
-            let delta = query_params["delta"];
-            Time::from_seconds(delta)
-
+        let timer: Time = if query_params.get("delta").is_some() || props.delta != 0 {
+            let delta = query_params.get("delta").unwrap_or(&props.delta);
+            Time::from(*delta)
         } else {
             Time {
                 hours: query_params.get("hours").unwrap_or(&props.hour).clone(),
@@ -145,7 +161,7 @@ impl Component for Timer {
                 seconds: query_params
                     .get("seconds")
                     .unwrap_or(&props.second)
-                    .clone()
+                    .clone(),
             }
         };
 
@@ -155,7 +171,7 @@ impl Component for Timer {
         // connects to it via an websocket or something.
         // Interval::new(1000, move || {}).forget();
 
-        let mut ws = WebSocket::open("ws://127.0.0.1:8080/ws").unwrap();
+        let mut ws = WebSocket::open(&*format!("ws://127.0.0.1:8080/ws/{}", props.ftype)).unwrap();
         let (mut tx, mut rx) = ws.split();
 
         spawn_local(async move {
@@ -164,10 +180,10 @@ impl Component for Timer {
                     Ok(t) => {
                         match t {
                             Message::Text(msg) => msg,
-                            _ => "00".to_string()
+                            _ => "00".to_string() // I have no clue why I put 00 here
                         }
                     }
-                    Err(_) => "f".to_string(),
+                    Err(_) => "f".to_string(), // f
                 };
 
                 link.send_message(Msg::Tick(t.to_string()));
@@ -178,12 +194,34 @@ impl Component for Timer {
         Self { timer, browser, id }
     }
 
-    fn update(&mut self, _ctx: &Context<Self>, msg: Self::Message) -> bool {
+    fn update(&mut self, ctx: &Context<Self>, msg: Self::Message) -> bool {
+        let props = ctx.props();
         match msg {
-            Msg::Tick(t) => {
-                debug!("time tick, {t}");
+            Msg::Tick(_) => {
+                let t = &props.ftype;
 
-                if t == "inc" && self.id == 6969  {
+                if props.paused {
+                    return false;
+                }
+
+                // implement just a timer that goes up
+                if t == "inc" {
+                    if self.id == 6969 {
+                        // do some special stuff here
+                    }
+
+                    self.timer.seconds += 1;
+
+                    if self.timer.seconds == 60 {
+                        self.timer.seconds = 0;
+                        self.timer.minutes += 1;
+
+                        if self.timer.minutes == 60 {
+                            self.timer.minutes = 0;
+                            self.timer.hours += 1;
+                        }
+                    }
+
                     // implement function to parse seconds to Time
                     return true;
                 }

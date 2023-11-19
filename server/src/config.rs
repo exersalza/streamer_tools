@@ -1,8 +1,8 @@
 use std::fs;
 use std::process::exit;
-use toml;
 
 use serde_derive::Deserialize;
+use toml;
 
 #[derive(Deserialize)]
 pub struct Config {

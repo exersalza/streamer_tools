@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 
 use yew::prelude::*;
-use crate::components::utils::class;
 
+use crate::components::utils::class;
 
 pub struct NavItem {
     name: String,

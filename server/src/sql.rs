@@ -1,8 +1,9 @@
+use std::sync::Mutex;
+
 use lazy_static::lazy_static;
 use log::{debug, error};
-use sqlite::State;
-use std::sync::Mutex;
 use serde_derive::Serialize;
+use sqlite::State;
 
 use crate::config::Config;
 

@@ -1,7 +1,6 @@
-use reqwest;
 use std::collections::HashMap;
-use log::debug;
-use reqwest::header::HeaderMap;
+
+use reqwest;
 use yew::{classes, Classes};
 
 /// Function to create the format for the classes! macro
@@ -39,6 +38,4 @@ pub fn query_parser(loc: &str) -> HashMap<String, String> {
     ret
 }
 
-pub fn type_of<T>(_: T) -> &'static str {
-    std::any::type_name::<T>()
-}
+

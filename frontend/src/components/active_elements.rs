@@ -1,13 +1,12 @@
-use yew::{Component, Context, Html} ;
-use super::utils::get;
+use yew::{Component, Context, Html};
 
 struct Element {
     name: String,
-    route: String
+    route: String,
 }
 
 struct Elements {
-    elements: Vec<Element>
+    elements: Vec<Element>,
 }
 
 impl Component for Element {

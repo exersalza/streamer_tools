@@ -1,38 +1,40 @@
-mod config;
-mod sql;
-mod subathon;
-mod utils;
-mod ws;
-
-use axum::extract::Path as axum_path;
-use axum::response::Html;
-use axum::{
-    http::StatusCode,
-    response::IntoResponse,
-    routing::{delete, get, post, Router},
-    Json,
-};
-use clap::Parser;
-use log::debug;
-use serde_derive::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::num::ParseIntError;
 use std::path::PathBuf;
 use std::str::FromStr;
+
+use axum::{
+    http::StatusCode,
+    Json,
+    response::IntoResponse,
+    routing::{delete, get, post, Router},
+};
+use axum::extract::Path as axum_path;
+use axum::response::Html;
+use clap::Parser;
+use log::debug;
+use serde_derive::{Deserialize, Serialize};
 use tokio::fs;
 use tower::{ServiceBuilder, ServiceExt};
 use tower_http::cors::{Any, CorsLayer};
 use tower_http::services::ServeDir;
 use tower_http::trace::TraceLayer;
 
-use crate::sql::{Sql, Timer, CONFIG};
+use crate::sql::{Sql, Timer};
 use crate::subathon::subathon_timer::{subathon_timer, Tick};
 use crate::ws::ws_handler;
+
+mod config;
+mod sql;
+mod subathon;
+mod ws;
+
 
 // lazy_static! {
 //     pub static ref CONFIG: Mutex<Config> = Mutex::new(Config::new("./config.toml"));
 // }
+
 
 #[derive(Parser, Debug)]
 #[clap(name = "server", about = "a randomly spawned server")]
@@ -59,8 +61,6 @@ struct Opt {
 
 #[tokio::main]
 async fn main() {
-    let tick = Tick::new(0);
-
     let opt = Opt::parse();
 
     if std::env::var("RUST_LOG").is_err() {
@@ -87,7 +87,7 @@ async fn main() {
 
     let app: Router = Router::new()
         .route("/ping", get(pong))
-        .route("/ws", get(ws_handler))
+        .route("/ws/:t", get(ws_handler))
         .merge(timer_endpoints)
         .layer(cors)
         .fallback_service(get(|req| async move {
@@ -227,7 +227,6 @@ async fn timer_update(axum_path(id): axum_path<i32>) -> impl IntoResponse {}
 async fn pong() -> impl IntoResponse {
     "Pong"
 }
-
 // Response::builder()
 //                     .status(StatusCode::INTERNAL_SERVER_ERROR)
 //                     .body(boxed(Body::from(format!("error: {err}"))))
