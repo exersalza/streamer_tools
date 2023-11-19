@@ -53,7 +53,7 @@ async fn handle_socket(mut socket: WebSocket, who: SocketAddr, _type: String) {
             // In case of any websocket error, we exit.
 
             // send a "dec" to every timer every seconds
-            if tx.send(Message::Text("tick".to_string())).await.is_err() {
+            if tx.send(Message::Text("".to_string())).await.is_err() {
                 log::info!("{who} broke connection");
                 break;
             }
