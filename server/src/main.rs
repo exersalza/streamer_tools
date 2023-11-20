@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
-use std::num::ParseIntError;
 use std::path::PathBuf;
 use std::str::FromStr;
 
@@ -21,7 +20,7 @@ use tower_http::cors::{Any, CorsLayer};
 use tower_http::services::ServeDir;
 use tower_http::trace::TraceLayer;
 
-use crate::sql::{Sql, Timer};
+use crate::sql::{Sql};
 use crate::subathon::subathon_timer::subathon_timer;
 use crate::ws::ws_handler;
 
@@ -29,6 +28,9 @@ mod config;
 mod sql;
 mod subathon;
 mod ws;
+
+extern crate frontend;
+use frontend::components::timer::*;
 
 // lazy_static! {
 //     pub static ref CONFIG: Mutex<Config> = Mutex::new(Config::new("./config.toml"));
@@ -121,41 +123,6 @@ async fn main() {
     log::info!("test");
 }
 
-pub struct Time {
-    hours: i32,
-    minutes: i32,
-    seconds: i32,
-}
-
-impl Timer {
-    pub fn new() -> Self {
-        Self {
-            id: 0,
-            time: String::from("00:00:00"),
-        }
-    }
-
-    pub fn convert_to_time(&self) -> Result<Time, ParseIntError> {
-        let items: Vec<_> = self.time.split(':').collect();
-
-        let hours: i32 = items[0].parse::<i32>()?;
-        let minutes: i32 = items[1].parse::<i32>()?;
-        let seconds: i32 = items[2].parse::<i32>()?;
-
-        Ok(Time {
-            hours,
-            minutes,
-            seconds,
-        })
-    }
-
-    pub fn convert_and_insert(&mut self, id: i32, hours: i32, minutes: i32, seconds: i32) {
-        let time: String = format!("{hours:02}:{minutes:02}:{seconds:02}");
-
-        self.id = id;
-        self.time = time;
-    }
-}
 
 #[derive(Debug, Deserialize)]
 struct TimerPostBody {
@@ -167,7 +134,7 @@ struct TimerPostBody {
 
 #[derive(Serialize)]
 struct GetAllResponse {
-    body: HashMap<i64, String>,
+    body: HashMap<i64, i64>,
 }
 
 async fn timer_get(axum_path(id): axum_path<i32>) -> impl IntoResponse {
@@ -205,7 +172,7 @@ async fn timer_get_all() -> impl IntoResponse {
         return (StatusCode::OK, serde_json::to_string("{}").unwrap());
     }
 
-    let mut ret: HashMap<i64, String> = HashMap::new();
+    let mut ret: HashMap<i64, i64> = HashMap::new();
 
     for (key, value) in timers {
         ret.insert(key, value);
@@ -219,6 +186,7 @@ async fn timer_get_all() -> impl IntoResponse {
 }
 
 async fn timer_update(axum_path(id): axum_path<i32>) -> impl IntoResponse {}
+
 
 async fn pong() -> impl IntoResponse {
     "Pong"

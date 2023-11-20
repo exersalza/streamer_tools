@@ -2,8 +2,9 @@ use std::sync::Mutex;
 
 use lazy_static::lazy_static;
 use log::{debug, error};
-use serde_derive::Serialize;
 use sqlite::State;
+extern crate frontend;
+use frontend::components::timer::{Time, Timer};
 
 use crate::config::Config;
 
@@ -15,12 +16,6 @@ pub struct Sql {
     conn: sqlite::Connection,
 }
 
-#[derive(Debug, Serialize)]
-pub struct Timer {
-    pub id: i32,
-    pub time: String,
-}
-
 impl Sql {
     pub fn new() -> Self {
         let cfg = CONFIG.lock().unwrap();
@@ -30,14 +25,14 @@ impl Sql {
         Self { conn }
     }
 
-    pub fn get_all_timers(&self) -> Vec<(i64, String)> {
+    pub fn get_all_timers(&self) -> Vec<(i64, i64)> {
         let query = "select * from timers";
         let mut statement = self.conn.prepare(query).unwrap();
-        let mut ret: Vec<(i64, String)> = Vec::new();
+        let mut ret: Vec<(i64, i64)> = Vec::new();
 
         while let Ok(sqlite::State::Row) = statement.next() {
             let item_id = statement.read::<i64, _>("timer_id").unwrap();
-            let time = statement.read::<String, _>("time").unwrap();
+            let time = statement.read::<i64, _>("time").unwrap();
 
             ret.push((item_id, time));
         }
@@ -52,7 +47,7 @@ impl Sql {
             VALUES ({}, '{}')
             ON CONFLICT (timer_id)
             DO UPDATE SET time = excluded.time;",
-            timer.id, timer.time
+            timer.id, timer.timer.to_seconds()
         );
 
         self.conn.execute(query).unwrap();
@@ -80,13 +75,14 @@ impl Sql {
         let query = format!("select * from timers where timer_id = {timer_id}");
         let mut statement = self.conn.prepare(query).unwrap();
         let mut timer = Timer {
+            timer: Time::from(0),
             id: -1,
-            time: "00:00:00".to_string(),
+            browser: false,
         };
 
         while let Ok(State::Row) = statement.next() {
             timer.id = statement.read::<i64, _>("timer_id").unwrap() as i32;
-            timer.time = statement.read::<String, _>("time").unwrap();
+            timer.timer.add_seconds(statement.read::<i64, _>("time").unwrap() as i32);
         }
 
         // check if we have data

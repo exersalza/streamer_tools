@@ -4,7 +4,7 @@ use yew_router::prelude::*;
 
 use components::{timer::Timer, utils::class};
 
-mod components;
+pub mod components;
 
 struct Streamer {
     name: String,

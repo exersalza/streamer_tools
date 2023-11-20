@@ -9,24 +9,28 @@ use wasm_bindgen_futures::spawn_local;
 use yew::prelude::*;
 use yew::{html, Component, Context, Html};
 use yew_router::prelude::*;
+use serde::{Deserialize, Serialize};
 
 use super::utils::{class, query_parser, Data};
+extern crate shared;
 
 pub enum Msg {
     Tick(String),
     Persistent(Data),
 }
 
-struct Time {
-    hours: i32,
-    minutes: i32,
-    seconds: i32,
+#[derive(Serialize, Deserialize)]
+pub struct Time {
+    pub hours: i32,
+    pub minutes: i32,
+    pub seconds: i32,
 }
 
+#[derive(Serialize, Deserialize)]
 pub struct Timer {
-    timer: Time,
-    id: i32,
-    browser: bool,
+    pub timer: Time,
+    pub id: i32,
+    pub browser: bool,
 }
 
 #[derive(Properties, PartialEq)]
@@ -60,7 +64,7 @@ pub struct Props {
 }
 
 impl Time {
-    fn new(hours: i32, minutes: i32, seconds: i32) -> Self {
+    pub fn new(hours: i32, minutes: i32, seconds: i32) -> Self {
         Self {
             hours,
             minutes,
@@ -69,7 +73,7 @@ impl Time {
     }
 
     /// Construct from seconds
-    fn from(sec: i32) -> Self {
+    pub fn from(sec: i32) -> Self {
         let seconds = sec % 60;
         let minutes = (sec / 60) % 60;
         let hours = (sec / 60) / 60;
@@ -82,7 +86,7 @@ impl Time {
     }
 
     /// Convert the Time structs elements to seconds
-    fn to_seconds(&self) -> i32 {
+    pub fn to_seconds(&self) -> i32 {
         // conversion from above but reversed and minified
         (self.hours * (60 * 60)) + (self.minutes * 60) + self.seconds
     }
@@ -107,8 +111,9 @@ impl Time {
     }
 }
 
+
 impl Timer {
-    pub fn new() -> Self {
+    pub fn new() -> Timer {
         Self {
             id: 0,
             timer: Time::from(0),
@@ -117,10 +122,8 @@ impl Timer {
     }
 
     pub fn convert_and_insert(&mut self, id: i32, hours: i32, minutes: i32, seconds: i32) {
-        let time: String = format!("{hours:02}:{minutes:02}:{seconds:02}");
-
         self.id = id;
-        self.timer = Time::from_time(time).unwrap();
+        self.timer = Time::new(hours, minutes, seconds);
     }
 }
 
