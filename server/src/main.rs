@@ -4,14 +4,14 @@ use std::num::ParseIntError;
 use std::path::PathBuf;
 use std::str::FromStr;
 
-use axum::{
-    http::StatusCode,
-    Json,
-    response::IntoResponse,
-    routing::{delete, get, post, Router},
-};
 use axum::extract::Path as axum_path;
 use axum::response::Html;
+use axum::{
+    http::StatusCode,
+    response::IntoResponse,
+    routing::{delete, get, post, Router},
+    Json,
+};
 use clap::Parser;
 use log::debug;
 use serde_derive::{Deserialize, Serialize};
@@ -22,7 +22,7 @@ use tower_http::services::ServeDir;
 use tower_http::trace::TraceLayer;
 
 use crate::sql::{Sql, Timer};
-use crate::subathon::subathon_timer::{subathon_timer, Tick};
+use crate::subathon::subathon_timer::subathon_timer;
 use crate::ws::ws_handler;
 
 mod config;
@@ -30,11 +30,9 @@ mod sql;
 mod subathon;
 mod ws;
 
-
 // lazy_static! {
 //     pub static ref CONFIG: Mutex<Config> = Mutex::new(Config::new("./config.toml"));
 // }
-
 
 #[derive(Parser, Debug)]
 #[clap(name = "server", about = "a randomly spawned server")]
@@ -66,8 +64,6 @@ async fn main() {
     if std::env::var("RUST_LOG").is_err() {
         std::env::set_var("RUST_LOG", format!("{},hyper=info,mio=info", opt.log_level))
     }
-
-    let sql = Sql::new();
 
     let timer_endpoints = Router::new()
         .route("/api/timer", post(timer_post))

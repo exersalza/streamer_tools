@@ -1,16 +1,16 @@
 use std::collections::HashMap;
 use std::num::ParseIntError;
 
-use futures::{SinkExt, StreamExt};
-use gloo_net::websocket::Message;
+use futures::StreamExt;
 use gloo_net::websocket::futures::WebSocket;
+use gloo_net::websocket::Message;
 use log::{debug, error, info};
 use wasm_bindgen_futures::spawn_local;
-use yew::{Component, Context, html, Html};
 use yew::prelude::*;
+use yew::{html, Component, Context, Html};
 use yew_router::prelude::*;
 
-use super::utils::{class, Data, query_parser};
+use super::utils::{class, query_parser, Data};
 
 pub enum Msg {
     Tick(String),
@@ -57,7 +57,6 @@ pub struct Props {
 
     #[prop_or(false)]
     pub paused: bool,
-
 }
 
 impl Time {
@@ -75,13 +74,26 @@ impl Time {
         let minutes = (sec / 60) % 60;
         let hours = (sec / 60) / 60;
 
-        Self { hours, minutes, seconds }
+        Self {
+            hours,
+            minutes,
+            seconds,
+        }
     }
 
     /// Convert the Time structs elements to seconds
     fn to_seconds(&self) -> i32 {
         // conversion from above but reversed and minified
         (self.hours * (60 * 60)) + (self.minutes * 60) + self.seconds
+    }
+
+    pub fn add_seconds(&mut self, sec: i32) {
+        let pre_sec = self.to_seconds();
+        let ret = Self::from(&pre_sec + &sec);
+
+        self.hours = ret.hours;
+        self.minutes = ret.minutes;
+        self.seconds = ret.seconds;
     }
 
     pub fn from_time(timer: String) -> Result<Self, ParseIntError> {
@@ -150,7 +162,6 @@ impl Component for Timer {
             query_params.insert(key, value);
         }
 
-
         let timer: Time = if query_params.get("delta").is_some() || props.delta != 0 {
             let delta = query_params.get("delta").unwrap_or(&props.delta);
             Time::from(*delta)
@@ -158,10 +169,7 @@ impl Component for Timer {
             Time {
                 hours: query_params.get("hours").unwrap_or(&props.hour).clone(),
                 minutes: query_params.get("minutes").unwrap_or(&props.minute).clone(),
-                seconds: query_params
-                    .get("seconds")
-                    .unwrap_or(&props.second)
-                    .clone(),
+                seconds: query_params.get("seconds").unwrap_or(&props.second).clone(),
             }
         };
 
@@ -180,7 +188,7 @@ impl Component for Timer {
                     Ok(t) => {
                         match t {
                             Message::Text(msg) => msg,
-                            _ => "00".to_string() // I have no clue why I put 00 here
+                            _ => "00".to_string(), // I have no clue why I put 00 here
                         }
                     }
                     Err(_) => "f".to_string(), // f
