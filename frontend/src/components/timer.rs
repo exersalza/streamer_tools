@@ -17,6 +17,7 @@ extern crate shared;
 pub enum Msg {
     Tick(String),
     Persistent(Data),
+    Update(i32)
 }
 
 #[derive(Serialize, Deserialize)]
@@ -80,7 +81,7 @@ impl Time {
 
         Self {
             hours,
-            minutes,
+            minutes ,
             seconds,
         }
     }
@@ -108,6 +109,33 @@ impl Time {
         let seconds: i32 = items[2].parse::<i32>()?;
 
         Ok(Self::new(hours, minutes, seconds))
+    }
+
+    pub fn inc_by_one(&mut self) {
+        self.seconds += 1;
+
+        if self.seconds == 60 {
+            self.seconds = 0;
+            self.minutes += 1;
+
+            if self.minutes == 60 {
+                self.minutes = 0;
+                self.hours += 1;
+            }
+        }
+    }
+
+    pub fn dec_by_one(&mut self) {
+        if self.seconds > 0 {
+            self.seconds -= 1;
+        } else if self.minutes > 0 {
+            self.minutes -= 1;
+            self.seconds = 59;
+        } else if self.hours > 0 {
+            self.hours -= 1;
+            self.minutes = 59;
+            self.seconds = 59;
+        }
     }
 }
 
@@ -217,38 +245,16 @@ impl Component for Timer {
 
                 // implement just a timer that goes up
                 if t == "inc" {
-                    if self.id == 6969 {
-                        // do some special stuff here
-                    }
-
-                    self.timer.seconds += 1;
-
-                    if self.timer.seconds == 60 {
-                        self.timer.seconds = 0;
-                        self.timer.minutes += 1;
-
-                        if self.timer.minutes == 60 {
-                            self.timer.minutes = 0;
-                            self.timer.hours += 1;
-                        }
-                    }
+                    self.timer.inc_by_one();
 
                     // implement function to parse seconds to Time
                     return true;
                 }
 
-                if self.timer.seconds > 0 {
-                    self.timer.seconds -= 1;
-                } else if self.timer.minutes > 0 {
-                    self.timer.minutes -= 1;
-                    self.timer.seconds = 59;
-                } else if self.timer.hours > 0 {
-                    self.timer.hours -= 1;
-                    self.timer.minutes = 59;
-                    self.timer.seconds = 59;
-                }
+                self.timer.dec_by_one();
             }
             Msg::Persistent(data) => info!("{data:?}"),
+            Msg::Update(time) => self.timer = Time::from(time),
         };
         true
     }

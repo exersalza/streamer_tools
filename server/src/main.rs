@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::path::PathBuf;
 use std::str::FromStr;
+use std::sync::Mutex;
 
 use axum::extract::Path as axum_path;
 use axum::response::Html;
@@ -12,6 +13,7 @@ use axum::{
     Json,
 };
 use clap::Parser;
+use lazy_static::lazy_static;
 use log::debug;
 use serde_derive::{Deserialize, Serialize};
 use tokio::fs;
@@ -35,6 +37,10 @@ use frontend::components::timer::*;
 // lazy_static! {
 //     pub static ref CONFIG: Mutex<Config> = Mutex::new(Config::new("./config.toml"));
 // }
+
+lazy_static!{
+    pub static ref SQL: Mutex<Sql> = Mutex::new(Sql::new());
+}
 
 #[derive(Parser, Debug)]
 #[clap(name = "server", about = "a randomly spawned server")]
@@ -137,21 +143,21 @@ struct GetAllResponse {
     body: HashMap<i64, i64>,
 }
 
+// wrongly named here, we just get the time that the object holds
 async fn timer_get(axum_path(id): axum_path<i32>) -> impl IntoResponse {
-    let time = Sql::new().get_time(id);
+    let time = SQL.lock().expect("Can't lock").get_time(id);
 
     if time.is_none() {
         return "No timer".to_string();
     }
 
-    let timer: Timer = time.unwrap();
-
-    serde_json::to_string(&timer).unwrap()
+    // ._.
+    time.unwrap().timer.to_seconds().to_string()
 }
 
 async fn timer_del(axum_path(id): axum_path<i32>) -> impl IntoResponse {
     debug!("del triggers");
-    Sql::new().delete_timer(id);
+    SQL.lock().expect("Can't lock").delete_timer(id);
     format!("{id}")
 }
 
@@ -159,15 +165,15 @@ async fn timer_post(Json(data): Json<TimerPostBody>) -> impl IntoResponse {
     debug!("post {data:#?}");
     let mut timer: Timer = Timer::new();
     timer.convert_and_insert(data.id, data.hours, data.minutes, data.seconds);
-    Sql::new().create_timer(&timer);
+    SQL.lock().expect("Can't lock").create_timer(&timer);
 
-    format!("created {}", timer.id)
+    timer.id.to_string()
 }
 
 async fn timer_get_all() -> impl IntoResponse {
     debug!("get all timer");
 
-    let timers = Sql::new().get_all_timers();
+    let timers = SQL.lock().expect("Can't lock").get_all_timers();
     if timers.len() == 0 {
         return (StatusCode::OK, serde_json::to_string("{}").unwrap());
     }
