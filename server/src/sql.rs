@@ -52,15 +52,12 @@ impl Sql {
 
         self.conn.execute(query).unwrap();
 
-        debug!("created {}", timer.id);
-
         timer.id
     }
 
     /// Delete a timer by its id
     pub fn delete_timer(&self, timer_id: i32) {
         let query = format!("delete from timers where timer_id = {timer_id};");
-        debug!("{query}");
 
         match self.conn.execute(query) {
             Ok(t) => t,

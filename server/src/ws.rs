@@ -52,21 +52,12 @@ async fn handle_socket(mut socket: WebSocket, who: SocketAddr, _type: String) {
         return;
     }
 
-    let _id = random::<u8>();
+    let mut _id = random::<u8>();
 
-    if _id == 0 {
-        let _id = random::<u8>();
+    while _id == 0 {
+        _id = random::<u8>();
     }
 
-
-    let mut sub  = sub_counter.lock().unwrap();
-
-    if *sub == 0 {
-        log::info!("init id {_id}");
-        *sub = _id;
-    }
-
-    let sub = sub.clone();
 
     // we need something to defer what type the timer is, if it's an subathon timer we also have
     // to create a new thread that handles twitch and stuff
@@ -75,6 +66,7 @@ async fn handle_socket(mut socket: WebSocket, who: SocketAddr, _type: String) {
     // Spawn a task that will push several messages to the client (does not matter what client does)
     tokio::spawn(async move {
         loop {
+            set_thread_id(_id).await;
             // In case of any websocket error, we exit.
             let mut text: String = String::from("");
 
@@ -101,9 +93,27 @@ async fn handle_socket(mut socket: WebSocket, who: SocketAddr, _type: String) {
             })))
             .await
         {
+            set_thread_id(0).await;
             log::error!("Could not send Close due to {e}, probably it is ok? {_id}");
         }
     });
+}
+
+
+// most complex function i wrote in the whole project
+async fn set_thread_id(id: u8) {
+    let mut sub = sub_counter.lock().unwrap();
+
+
+    // set new thread id if there is none, else reset
+    if *sub == 0 && id != 0 && *sub != id {
+        *sub = id;
+        return;
+    }
+
+    if id == 0 {
+        *sub = 0;
+    }
 }
 
 fn dec_time(id: i32, thread_id: u8) -> i32 {
