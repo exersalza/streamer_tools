@@ -31,7 +31,7 @@ impl Component for Base {
         ];
 
         let mut streamer = Streamer {
-            name: String::from("betrayed"),
+            name: String::from("betrayedval"),
             links: vec![],
         };
 
@@ -80,7 +80,7 @@ impl Component for Base {
                     // top right / nav??
                     <div class={class("bg-base-light flex")}>
                         <Timer paused={&self.paused} hour=5 minute=2 class={class("relative left-[33%] top-4")} />
-                        <Timer timer_id=6969 ftype="inc" /> // we do a little bit of trolling here
+                        <Timer ftype="sub" /> // we do a little bit of trolling here
                     </div>
                     // bottom left / item list
                     <div class={class("bg-base-light")}>

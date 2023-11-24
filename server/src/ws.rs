@@ -10,11 +10,19 @@ use axum::{
 //allows to extract the IP of connecting user
 use axum::extract::connect_info::ConnectInfo;
 use axum::extract::Path;
+use std::sync::Mutex;
 use axum::extract::ws::CloseFrame;
 //allows to split the websocket stream into separate TX and RX branches
 use futures::{sink::SinkExt, stream::StreamExt};
+use lazy_static::lazy_static;
+use rand::random;
+use frontend::components::timer::{Time, Timer};
 use crate::SQL;
 
+
+lazy_static! {
+    static ref sub_counter: Mutex<u8> = Mutex::new(0);
+}
 
 pub async fn ws_handler(Path(t): Path<String>,
                         ws: WebSocketUpgrade,
@@ -44,6 +52,21 @@ async fn handle_socket(mut socket: WebSocket, who: SocketAddr, _type: String) {
         return;
     }
 
+    let _id = random::<u8>();
+
+    if _id == 0 {
+        let _id = random::<u8>();
+    }
+
+
+    let mut sub  = sub_counter.lock().unwrap();
+
+    if *sub == 0 {
+        log::info!("init id {_id}");
+        *sub = _id;
+    }
+
+    let sub = sub.clone();
 
     // we need something to defer what type the timer is, if it's an subathon timer we also have
     // to create a new thread that handles twitch and stuff
@@ -53,9 +76,16 @@ async fn handle_socket(mut socket: WebSocket, who: SocketAddr, _type: String) {
     tokio::spawn(async move {
         loop {
             // In case of any websocket error, we exit.
+            let mut text: String = String::from("");
+
+            // check if we have the subathon timer and trait it different.
+
+            if _type == "sub" /* && sub == _id */ { // maybe being renamed later in progress
+                text = format!("{}", dec_time(6969, _id));
+            }
 
             // send a tick to every timer every seconds, functionality is handled inside the timer itself
-            if tx.send(Message::Text("".to_string())).await.is_err() {
+            if tx.send(Message::Text(text)).await.is_err() {
                 log::info!("{who} broke connection");
                 break;
             }
@@ -71,9 +101,31 @@ async fn handle_socket(mut socket: WebSocket, who: SocketAddr, _type: String) {
             })))
             .await
         {
-            println!("Could not send Close due to {e}, probably it is ok?");
+            log::error!("Could not send Close due to {e}, probably it is ok? {_id}");
         }
     });
+}
+
+fn dec_time(id: i32, thread_id: u8) -> i32 {
+    let sql = SQL.lock().expect("Can't lock");
+    let sub = sub_counter.lock().unwrap().clone();
+    let mut time = sql.get_time(id).unwrap().timer.to_seconds();
+
+    time -= 1;
+
+    if sub != thread_id {
+        return time;
+    }
+
+    let timer = Timer {
+        timer: Time::from(time),
+        id,
+        browser: false,
+    };
+    sql.create_timer(&timer);
+
+    time
+
 }
 
 fn process_message(msg: Message, who: SocketAddr) -> ControlFlow<(), ()> {

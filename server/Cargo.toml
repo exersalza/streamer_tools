@@ -26,3 +26,4 @@ tokio-stream = "0.1.14"
 futures = { version = "0.3.29", features = [] }
 axum-extra = "0.8.0"
 frontend = {path = "../frontend"}
+ran = "1.1.5"
