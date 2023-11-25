@@ -80,7 +80,7 @@ impl Component for Base {
                     // top right / nav??
                     <div class={class("bg-base-light flex")}>
                         <Timer paused={&self.paused} hour=5 minute=2 class={class("relative left-[33%] top-4")} />
-                        <Timer ftype="sub" /> // we do a little bit of trolling here
+                        <Timer ftype="sub" paused={&self.paused} /> // we do a little bit of trolling here
                     </div>
                     // bottom left / item list
                     <div class={class("bg-base-light")}>

@@ -61,12 +61,14 @@ async fn handle_socket(mut socket: WebSocket, who: SocketAddr, _type: String) {
 
     // we need something to defer what type the timer is, if it's an subathon timer we also have
     // to create a new thread that handles twitch and stuff
-    let (mut tx, _rx) = socket.split();
+    let (mut tx, rx) = socket.split();
 
     // Spawn a task that will push several messages to the client (does not matter what client does)
     tokio::spawn(async move {
         loop {
             set_thread_id(_id).await;
+
+
             // In case of any websocket error, we exit.
             let mut text: String = String::from("");
 
@@ -121,8 +123,11 @@ fn dec_time(id: i32, thread_id: u8) -> i32 {
     let sub = sub_counter.lock().unwrap().clone();
     let mut time = sql.get_time(id).unwrap().timer.to_seconds();
 
-    time -= 1;
+    if time <= 0 {
+        return time;
+    }
 
+    time -= 1;
     if sub != thread_id {
         return time;
     }
