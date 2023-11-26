@@ -68,7 +68,6 @@ async fn handle_socket(mut socket: WebSocket, who: SocketAddr, _type: String) {
         loop {
             set_thread_id(_id).await;
 
-
             // In case of any websocket error, we exit.
             let mut text: String = String::from("");
 
@@ -84,7 +83,7 @@ async fn handle_socket(mut socket: WebSocket, who: SocketAddr, _type: String) {
                 break;
             }
 
-            tokio::time::sleep(std::time::Duration::from_millis(1000)).await;
+            tokio::time::sleep(std::time::Duration::from_millis(990)).await;
         }
 
         log::info!("Sending close to {who}...");
