@@ -1,6 +1,6 @@
 use std::borrow::Cow;
 use std::net::SocketAddr;
-use std::ops::ControlFlow;
+use std::ops::{BitXor, ControlFlow, Not};
 
 use axum::{
     extract::ws::{Message, WebSocket, WebSocketUpgrade},
@@ -16,7 +16,6 @@ use axum::extract::ws::CloseFrame;
 //allows to split the websocket stream into separate TX and RX branches
 use futures::{sink::SinkExt, stream::StreamExt};
 use lazy_static::lazy_static;
-use rand::random;
 use frontend::components::timer::{Time, Timer};
 use shared::get_random_id;
 use crate::SQL;
@@ -24,6 +23,7 @@ use crate::SQL;
 
 lazy_static! {
     static ref SUB_COUNTER: Mutex<u16> = Mutex::new(0);
+    static ref SUB_PAUSED: Mutex<bool> = Mutex::new(false);
 }
 
 pub async fn ws_handler(Path(t): Path<String>,
@@ -59,16 +59,50 @@ async fn handle_socket(mut socket: WebSocket, who: SocketAddr, _type: String) {
 
     // we need something to defer what type the timer is, if it's an subathon timer we also have
     // to create a new thread that handles twitch and stuff
-    let (mut tx, rx) = socket.split();
+    let (mut tx, mut rx) = socket.split();
+
+    // this thread kills everything somehow???? also when we get a close, of course
+    tokio::spawn(async move {
+        loop {
+            if let Some(Ok(msg)) = rx.next().await {
+                match &msg {
+                    Message::Text(t) => {
+                        if t == "flip_pause" {
+                            flip_paused().await;
+                        }
+                    },
+                    Message::Close(c) => {
+                        if let Some(cf) = c {
+                            log::info!(
+                                ">>> {} sent close with code {} and reason `{}`",
+                                who, cf.code, cf.reason
+                            );
+                        } else {
+                            log::info!(">>> {who} somehow sent close message without CloseFrame");
+                        }
+                        break;
+                    },
+                    _ => ()
+                };
+            }
+        }
+    });
 
     // Spawn a task that will push several messages to the client (does not matter what client does)
     tokio::spawn(async move {
         let mut last: u64 = 0;
         loop {
+            // short timeout so the thread can actually process whats going on
+            tokio::time::sleep(time::Duration::from_millis(269)).await;
+
             let sys_time = time::SystemTime::now()
                                         .duration_since(time::UNIX_EPOCH)
                                         .unwrap()
                                         .as_secs();
+
+            if get_paused().await {
+                continue;
+            }
 
             // hopefully prevent added time that comes from processing
             if last == sys_time {
@@ -78,8 +112,6 @@ async fn handle_socket(mut socket: WebSocket, who: SocketAddr, _type: String) {
             last = sys_time;
 
             set_thread_id(_id).await;
-
-            //if rx.next().await
 
             // In case of any websocket error, we exit.
             let mut text: String = String::from("");
@@ -95,8 +127,6 @@ async fn handle_socket(mut socket: WebSocket, who: SocketAddr, _type: String) {
                 log::info!("{who} broke connection");
                 break;
             }
-
-            tokio::time::sleep(time::Duration::from_millis(269)).await;
         }
 
         log::info!("Sending close to {who}...");
@@ -151,38 +181,14 @@ fn dec_time(id: i32, thread_id: u16) -> i32 {
     sql.create_timer(&timer);
 
     time
-
 }
 
-fn process_message(msg: Message, who: SocketAddr) -> ControlFlow<(), ()> {
-    match msg {
-        Message::Text(t) => {
-            println!(">>> {who} sent str: {t:?}");
-        }
-        Message::Binary(d) => {
-            println!(">>> {} sent {} bytes: {:?}", who, d.len(), d);
-        }
-        Message::Close(c) => {
-            if let Some(cf) = c {
-                println!(
-                    ">>> {} sent close with code {} and reason `{}`",
-                    who, cf.code, cf.reason
-                );
-            } else {
-                println!(">>> {who} somehow sent close message without CloseFrame");
-            }
-            return ControlFlow::Break(());
-        }
+async fn get_paused() -> bool {
+    let rret = SUB_PAUSED.lock().expect("cAN#T LOCK");
+    *rret
+}
 
-        Message::Pong(v) => {
-            println!(">>> {who} sent pong with {v:?}");
-        }
-        // You should never need to manually handle Message::Ping, as axum's websocket library
-        // will do so for you automagically by replying with Pong and copying the v according to
-        // spec. But if you need the contents of the pings you can see them here.
-        Message::Ping(v) => {
-            println!(">>> {who} sent ping with {v:?}");
-        }
-    }
-    ControlFlow::Continue(())
+async fn flip_paused() {
+    let mut flipper = SUB_PAUSED.lock().expect("Can't lock");
+    *flipper = flipper.not();
 }
