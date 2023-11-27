@@ -11,17 +11,19 @@ use axum::{
 use axum::extract::connect_info::ConnectInfo;
 use axum::extract::Path;
 use std::sync::Mutex;
+use std::time;
 use axum::extract::ws::CloseFrame;
 //allows to split the websocket stream into separate TX and RX branches
 use futures::{sink::SinkExt, stream::StreamExt};
 use lazy_static::lazy_static;
 use rand::random;
 use frontend::components::timer::{Time, Timer};
+use shared::get_random_id;
 use crate::SQL;
 
 
 lazy_static! {
-    static ref sub_counter: Mutex<u8> = Mutex::new(0);
+    static ref SUB_COUNTER: Mutex<u16> = Mutex::new(0);
 }
 
 pub async fn ws_handler(Path(t): Path<String>,
@@ -52,11 +54,7 @@ async fn handle_socket(mut socket: WebSocket, who: SocketAddr, _type: String) {
         return;
     }
 
-    let mut _id = random::<u8>();
-
-    while _id == 0 {
-        _id = random::<u8>();
-    }
+    let _id = get_random_id();
 
 
     // we need something to defer what type the timer is, if it's an subathon timer we also have
@@ -65,8 +63,23 @@ async fn handle_socket(mut socket: WebSocket, who: SocketAddr, _type: String) {
 
     // Spawn a task that will push several messages to the client (does not matter what client does)
     tokio::spawn(async move {
+        let mut last: u64 = 0;
         loop {
+            let sys_time = time::SystemTime::now()
+                                        .duration_since(time::UNIX_EPOCH)
+                                        .unwrap()
+                                        .as_secs();
+
+            // hopefully prevent added time that comes from processing
+            if last == sys_time {
+                continue;
+            }
+
+            last = sys_time;
+
             set_thread_id(_id).await;
+
+            //if rx.next().await
 
             // In case of any websocket error, we exit.
             let mut text: String = String::from("");
@@ -83,7 +96,7 @@ async fn handle_socket(mut socket: WebSocket, who: SocketAddr, _type: String) {
                 break;
             }
 
-            tokio::time::sleep(std::time::Duration::from_millis(995)).await;
+            tokio::time::sleep(time::Duration::from_millis(269)).await;
         }
 
         log::info!("Sending close to {who}...");
@@ -102,9 +115,8 @@ async fn handle_socket(mut socket: WebSocket, who: SocketAddr, _type: String) {
 
 
 // most complex function i wrote in the whole project
-async fn set_thread_id(id: u8) {
-    let mut sub = sub_counter.lock().unwrap();
-
+async fn set_thread_id(id: u16) {
+    let mut sub = SUB_COUNTER.lock().unwrap();
 
     // set new thread id if there is none, else reset
     if *sub == 0 && id != 0 && *sub != id {
@@ -117,9 +129,9 @@ async fn set_thread_id(id: u8) {
     }
 }
 
-fn dec_time(id: i32, thread_id: u8) -> i32 {
+fn dec_time(id: i32, thread_id: u16) -> i32 {
     let sql = SQL.lock().expect("Can't lock");
-    let sub = sub_counter.lock().unwrap().clone();
+    let sub = SUB_COUNTER.lock().unwrap().clone();
     let mut time = sql.get_time(id).unwrap().timer.to_seconds();
 
     if time <= 0 {
