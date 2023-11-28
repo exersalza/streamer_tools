@@ -30,7 +30,7 @@ pub async fn ws_handler(Path(t): Path<String>,
                         ws: WebSocketUpgrade,
                         user_agent: Option<TypedHeader<headers::UserAgent>>,
                         ConnectInfo(addr): ConnectInfo<SocketAddr>,
-) -> impl IntoResponse {
+) -> impl IntoResponse { // fuck around find out
     let user_agent = if let Some(TypedHeader(user_agent)) = user_agent {
         user_agent.to_string()
     } else {
