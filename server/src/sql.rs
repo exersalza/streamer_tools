@@ -1,12 +1,16 @@
+extern crate frontend;
+
+use std::fs;
 use std::sync::Mutex;
 
 use lazy_static::lazy_static;
 use log::{debug, error};
 use sqlite::State;
-extern crate frontend;
+
 use frontend::components::timer::{Time, Timer};
 
 use crate::config::Config;
+
 
 lazy_static! {
     pub static ref CONFIG: Mutex<Config> = Mutex::new(Config::new("./config.toml"));
@@ -19,8 +23,13 @@ pub struct Sql {
 impl Sql {
     pub fn new() -> Self {
         let cfg = CONFIG.lock().unwrap();
-        debug!("{}", cfg.sql_path.clone());
-        let conn = sqlite::open(cfg.sql_path.clone()).unwrap();
+        let path = cfg.sql_path.clone();
+        debug!("Sqlite file: {path}");
+
+        let conn = match fs::metadata(&path) {
+            Ok(_) => sqlite::open(&path).unwrap(),
+            Err(_) => create_db(&path).unwrap()
+        };
 
         Self { conn }
     }
@@ -30,7 +39,7 @@ impl Sql {
         let mut statement = self.conn.prepare(query).unwrap();
         let mut ret: Vec<(i64, i64)> = Vec::new();
 
-        while let Ok(sqlite::State::Row) = statement.next() {
+        while let Ok(State::Row) = statement.next() {
             let item_id = statement.read::<i64, _>("timer_id").unwrap();
             let time = statement.read::<i64, _>("time").unwrap();
 
@@ -89,4 +98,21 @@ impl Sql {
 
         Some(timer)
     }
+}
+
+fn create_db(path: &String) -> std::io::Result<sqlite::Connection> {
+    fs::File::create(path)?;
+
+    let conn = sqlite::open(path).unwrap();
+
+    let query = format!("
+    create table timers
+        (
+            timer_id integer
+            primary key,
+            time     INTEGER
+        );");
+
+    conn.execute(query).unwrap();
+    Ok(conn)
 }
