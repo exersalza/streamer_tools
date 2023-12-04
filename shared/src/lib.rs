@@ -1,3 +1,5 @@
+pub mod globals;
+
 use rand::random;
 
 pub fn get_random_id() -> u16 {

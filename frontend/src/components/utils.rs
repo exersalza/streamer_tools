@@ -1,3 +1,4 @@
+use std::any::Any;
 use std::collections::HashMap;
 
 use reqwest;
@@ -15,7 +16,10 @@ pub async fn get(url: &str) -> Result<String, reqwest::Error> {
         .get(url)
         .send()
         .await?;
+
+
     let text = response.text().await?;
+
     Ok(text)
 }
 

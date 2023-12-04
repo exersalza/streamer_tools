@@ -25,6 +25,7 @@ use tower_http::trace::TraceLayer;
 use crate::sql::{Sql};
 use crate::subathon::subathon_timer::subathon_timer;
 use crate::ws::ws_handler;
+use shared::globals;
 
 mod config;
 mod sql;
@@ -72,6 +73,9 @@ async fn main() {
     if std::env::var("RUST_LOG").is_err() {
         std::env::set_var("RUST_LOG", format!("{},hyper=info,mio=info", opt.log_level))
     }
+
+    let mut url_lock = globals::URL.lock().expect("can't lock");
+    *url_lock = format!("{}:{}", opt.addr, opt.port);
 
     let timer_endpoints = Router::new()
         .route("/api/timer", post(timer_post))
@@ -125,8 +129,6 @@ async fn main() {
         .serve(app.into_make_service_with_connect_info::<SocketAddr>())
         .await
         .expect("Unable to start server");
-
-    log::info!("test");
 }
 
 
@@ -184,7 +186,6 @@ async fn timer_get_all() -> impl IntoResponse {
         ret.insert(key, value);
     }
 
-    let ret = GetAllResponse { body: ret };
     (
         StatusCode::OK,
         serde_json::to_string(&ret).expect("Failed to create json"),

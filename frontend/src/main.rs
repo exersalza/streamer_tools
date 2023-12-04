@@ -1,8 +1,13 @@
+use std::collections::HashMap;
+use std::future::Future;
 use log::info;
+use yew::platform::spawn_local;
 use yew::prelude::*;
 use yew_router::prelude::*;
 
 use components::{timer::Timer, utils::class};
+use shared::globals::URL;
+use crate::components::utils::{Data, get};
 
 pub mod components;
 
@@ -13,18 +18,20 @@ struct Streamer {
 
 struct Base {
     streamer: Streamer,
-    paused: bool
+    paused: bool,
+    timer: HashMap<i64, i64>
 }
 
 enum Msg {
-    ButtonClick
+    ButtonClick,
+    TimerList(String)
 }
 
 impl Component for Base {
     type Message = Msg;
     type Properties = ();
 
-    fn create(_ctx: &Context<Self>) -> Self {
+    fn create(ctx: &Context<Self>) -> Self {
         let links = vec![
             ("https://dashboard.twitch.tv/u/{}/home", "dashboard"),
             ("https://twitch.tv/{}", "livestream"),
@@ -43,13 +50,26 @@ impl Component for Base {
         }
 
         let paused = false;
+        let timer: HashMap<i64, i64> = HashMap::new();
+        let url = URL.lock().expect("can't lock").clone();
+        let link = ctx.link().clone();
 
-        Self { streamer, paused }
+        spawn_local(async move {
+            match get(format!("http://{url}/api/get_all_timer").as_str()).await {
+                Ok(data) => link.send_message(Msg::TimerList(data)),
+                Err(e) => log::error!("{e}")
+            };
+        });
+
+        Self { streamer, paused, timer }
     }
 
     fn update(&mut self, ctx: &Context<Self>, msg: Self::Message) -> bool {
         match msg {
-            Msg::ButtonClick => self.paused = !self.paused
+            Msg::ButtonClick => self.paused = !self.paused,
+            Msg::TimerList(list) => {
+                self.timer = serde_json::from_str(list.as_str()).unwrap();
+            }
         }
         true
     }
@@ -84,7 +104,8 @@ impl Component for Base {
                     </div>
                     // bottom left / item list
                     <div class={class("bg-base-light")}>
-
+                        <div class={class("h-full w-full flex flex-row")}>
+                        </div>
                     </div>
                     // bottom right / body shows first item when created
                     <div class={class("bg-base rounded-tl-xl")}>
@@ -121,7 +142,8 @@ fn switch(routes: Route) -> Html {
         Route::Timer { id } => html! {<Timer timer_id={id} />},
         Route::TimerClean => html! {<Timer />},
         Route::NotFound => html! {
-        <p class={class("bg-base-light grid place-items-center h-screen w-screen text-text")}>{"404 not found"}</p>},
+            <p class={class("bg-base-light grid place-items-center h-screen w-screen text-text")}>{"404 not found"}</p>
+        },
     }
 }
 
