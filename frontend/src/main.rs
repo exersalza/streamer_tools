@@ -5,7 +5,7 @@ use yew::platform::spawn_local;
 use yew::prelude::*;
 use yew_router::prelude::*;
 
-use components::{timer::Timer, utils::class};
+use components::{timer::Timer, utils::class, timer_item::TimerItem};
 use shared::globals::URL;
 use crate::components::utils::{Data, get};
 
@@ -19,7 +19,7 @@ struct Streamer {
 struct Base {
     streamer: Streamer,
     paused: bool,
-    timer: HashMap<i64, i64>
+    timer_list: HashMap<i64, i64>
 }
 
 enum Msg {
@@ -61,14 +61,14 @@ impl Component for Base {
             };
         });
 
-        Self { streamer, paused, timer }
+        Self { streamer, paused, timer_list: timer }
     }
 
     fn update(&mut self, ctx: &Context<Self>, msg: Self::Message) -> bool {
         match msg {
             Msg::ButtonClick => self.paused = !self.paused,
             Msg::TimerList(list) => {
-                self.timer = serde_json::from_str(list.as_str()).unwrap();
+                self.timer_list = serde_json::from_str(list.as_str()).unwrap();
             }
         }
         true
@@ -104,7 +104,14 @@ impl Component for Base {
                     </div>
                     // bottom left / item list
                     <div class={class("bg-base-light")}>
-                        <div class={class("h-full w-full flex flex-row")}>
+                        <div class={class("h-full w-full flex flex-col gap-2 pt-2")}>
+                            {
+                                for self.timer_list.iter().map(|(id, time)| {
+                                    html! {
+                                        <TimerItem id={id} />
+                                    }
+                                })
+                            }
                         </div>
                     </div>
                     // bottom right / body shows first item when created

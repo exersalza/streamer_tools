@@ -93,7 +93,7 @@ async fn handle_socket(mut socket: WebSocket, who: SocketAddr, _type: String) {
         let mut last: u64 = 0;
         loop {
             // short timeout so the thread can actually process whats going on
-            tokio::time::sleep(time::Duration::from_millis(269)).await;
+            tokio::time::sleep(time::Duration::from_millis(69)).await;
 
             let sys_time = time::SystemTime::now()
                                         .duration_since(time::UNIX_EPOCH)

@@ -3,5 +3,5 @@ pub mod sideapp;
 pub mod utils;
 pub mod active_elements;
 pub mod timer;
-mod base;
-mod timer_item;
+pub mod base;
+pub mod timer_item;

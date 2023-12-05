@@ -2,9 +2,9 @@ use std::collections::HashMap;
 use yew::prelude::*;
 use yew_router::prelude::*;
 
-use crate::class;
+use crate::components::utils::class;
 
-struct TimerItem {
+pub struct TimerItem {
     id: i64,
     states: HashMap<String, bool>,
 }
@@ -16,23 +16,24 @@ pub struct Props {
 
     #[prop_or("".to_string())]
     pub title: String
-
 }
 
 impl Component for TimerItem {
     type Message = ();
-    type Properties = ();
+    type Properties = Props;
 
     fn create(ctx: &Context<Self>) -> Self {
+        let props = ctx.props();
+        let id: i64 = props.id;
         let states: HashMap<String, bool> = HashMap::new();
 
-        Self { id, states }
+        Self { id, states}
     }
 
     fn view(&self, ctx: &Context<Self>) -> Html {
         html! {
-            <div class={class("bg-yellow-500 h-16 w-full rounded")}>
-                <p class={class("m-2")}>{&self.id}</p>
+            <div class={class("bg-yellow-500 h-16 w-full rounded -ml-2 flex flex-col justify-center")}>
+                <p class={class("ml-4")}>{&self.id}</p>
             </div>
         }
     }

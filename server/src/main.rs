@@ -22,7 +22,7 @@ use tower_http::cors::{Any, CorsLayer};
 use tower_http::services::ServeDir;
 use tower_http::trace::TraceLayer;
 
-use crate::sql::{Sql};
+use crate::sql::{Sql, };
 use crate::subathon::subathon_timer::subathon_timer;
 use crate::ws::ws_handler;
 use shared::globals;
@@ -180,11 +180,13 @@ async fn timer_get_all() -> impl IntoResponse {
         return (StatusCode::OK, serde_json::to_string("{}").unwrap());
     }
 
-    let mut ret: HashMap<i64, i64> = HashMap::new();
+    let mut ret: HashMap<i64, (i64, String)> = HashMap::new();
 
-    for (key, value) in timers {
-        ret.insert(key, value);
+    for (id, time, title) in timers {
+        ret.insert(id, (time, title));
     }
+
+    println!("{ret:?}");
 
     (
         StatusCode::OK,

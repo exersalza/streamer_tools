@@ -5,6 +5,7 @@ use std::sync::Mutex;
 
 use lazy_static::lazy_static;
 use log::{debug, error};
+use serde_derive::{Deserialize, Serialize};
 use sqlite::State;
 
 use frontend::components::timer::{Time, Timer};
@@ -34,16 +35,20 @@ impl Sql {
         Self { conn }
     }
 
-    pub fn get_all_timers(&self) -> Vec<(i64, i64)> {
+    pub fn get_all_timers(&self) -> Vec<(i64, i64, String)> {
         let query = "select * from timers";
         let mut statement = self.conn.prepare(query).unwrap();
-        let mut ret: Vec<(i64, i64)> = Vec::new();
+        let mut ret: Vec<(i64, i64, String)> = Vec::new();
 
         while let Ok(State::Row) = statement.next() {
-            let item_id = statement.read::<i64, _>("timer_id").unwrap();
+            let id = statement.read::<i64, _>("timer_id").unwrap();
             let time = statement.read::<i64, _>("time").unwrap();
+            let title = statement.read::<String, _>("title").unwrap();
 
-            ret.push((item_id, time));
+
+            ret.push( (
+                id, time, title.to_string()
+            ));
         }
 
         ret
@@ -75,6 +80,7 @@ impl Sql {
 
         debug!("deleted {}", timer_id);
     }
+
 
     /// get the stored time for an id
     pub fn get_time(&self, timer_id: i32) -> Option<Timer> {
@@ -109,8 +115,9 @@ fn create_db(path: &String) -> std::io::Result<sqlite::Connection> {
     create table timers
         (
             timer_id integer
-            primary key,
-            time     INTEGER
+                primary key,
+            time     INTEGER,
+            title    TEXT
         );");
 
     conn.execute(query).unwrap();
