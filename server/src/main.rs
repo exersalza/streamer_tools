@@ -20,7 +20,7 @@ use tower_http::cors::{Any, CorsLayer};
 use tower_http::services::ServeDir;
 use tower_http::trace::TraceLayer;
 
-use crate::sql::{Sql};
+use crate::sql::Sql;
 use crate::subathon::subathon_timer::subathon_timer;
 use crate::ws::ws_handler;
 
@@ -123,7 +123,6 @@ async fn main() {
     log::info!("test");
 }
 
-
 #[derive(Debug, Deserialize)]
 struct TimerPostBody {
     id: i32,
@@ -186,7 +185,6 @@ async fn timer_get_all() -> impl IntoResponse {
 }
 
 async fn timer_update(axum_path(id): axum_path<i32>) -> impl IntoResponse {}
-
 
 async fn pong() -> impl IntoResponse {
     "Pong"
