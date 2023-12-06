@@ -28,3 +28,4 @@ axum-extra = "0.8.0"
 frontend = {path = "../frontend"}
 shared = {path = "../shared"}
 ran = "1.1.5"
+itertools = "0.12.0"

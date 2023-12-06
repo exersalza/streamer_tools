@@ -1,9 +1,10 @@
 use std::collections::HashMap;
 use std::future::Future;
-use log::info;
+use log::{debug, info};
 use yew::platform::spawn_local;
 use yew::prelude::*;
 use yew_router::prelude::*;
+use itertools::Itertools;
 
 use components::{timer::Timer, utils::class, timer_item::TimerItem};
 use shared::globals::URL;
@@ -19,7 +20,7 @@ struct Streamer {
 struct Base {
     streamer: Streamer,
     paused: bool,
-    timer_list: HashMap<i64, i64>
+    timer_list: HashMap<i64, (i64, String)>
 }
 
 enum Msg {
@@ -50,7 +51,7 @@ impl Component for Base {
         }
 
         let paused = false;
-        let timer: HashMap<i64, i64> = HashMap::new();
+        let timer: HashMap<i64, (i64, String)> = HashMap::new();
         let url = URL.lock().expect("can't lock").clone();
         let link = ctx.link().clone();
 
@@ -68,7 +69,8 @@ impl Component for Base {
         match msg {
             Msg::ButtonClick => self.paused = !self.paused,
             Msg::TimerList(list) => {
-                self.timer_list = serde_json::from_str(list.as_str()).unwrap();
+                let f: HashMap<i64, (i64, String)> = serde_json::from_str(list.as_str()).unwrap();
+                self.timer_list = f;
             }
         }
         true
@@ -106,9 +108,11 @@ impl Component for Base {
                     <div class={class("bg-base-light")}>
                         <div class={class("h-full w-full flex flex-col gap-2 pt-2")}>
                             {
-                                for self.timer_list.iter().map(|(id, time)| {
+                                for self.timer_list.iter()
+                                            .sorted_by_key(|&id| id)
+                                            .map(|(id, time)| {
                                     html! {
-                                        <TimerItem id={id} />
+                                        <TimerItem id={id} title={time.1.clone()} />
                                     }
                                 })
                             }

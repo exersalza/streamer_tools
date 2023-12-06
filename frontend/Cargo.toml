@@ -22,3 +22,4 @@ shared = {path =  "../shared"}
 serde = { version = "1.0.192", features = ["derive"] }
 serde_derive = "1.0.193"
 serde_json = "1.0.108"
+itertools = "0.12.0"
