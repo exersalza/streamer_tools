@@ -10,6 +10,9 @@ use components::{timer::Timer, utils::class, timer_item::TimerItem};
 use shared::globals::URL;
 use crate::components::utils::{Data, get};
 
+// todo:
+//  stuff -> show log of past events
+
 pub mod components;
 
 struct Streamer {
@@ -20,12 +23,12 @@ struct Streamer {
 struct Base {
     streamer: Streamer,
     paused: bool,
-    timer_list: HashMap<i64, (i64, String)>
+    timer_list: HashMap<i64, (i64, String)>,
 }
 
 enum Msg {
     ButtonClick,
-    TimerList(String)
+    TimerList(String),
 }
 
 impl Component for Base {
@@ -147,7 +150,7 @@ enum Route {
 }
 
 fn switch(routes: Route) -> Html {
-    let paused: Callback<bool> = Callback::from(move |_| {info!("paused")});
+    let paused: Callback<bool> = Callback::from(move |_| { info!("paused") });
     match routes {
         Route::Home => html! {<Base />},
         Route::Timer { id } => html! {<Timer timer_id={id} />},

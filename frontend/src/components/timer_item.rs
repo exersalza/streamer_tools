@@ -54,6 +54,7 @@ impl Component for TimerItem {
 
     fn view(&self, ctx: &Context<Self>) -> Html {
         let link = ctx.link().clone();
+        let id = self.id.clone();
 
         let active: String = if self.active {
             "bg-accent".to_string()
@@ -66,9 +67,9 @@ impl Component for TimerItem {
         });
 
         html! {
-            <div class={class(format!("hover:bg-accent h-max w-full text-gray-500 hover:text-gray-300 select-none transition-all rounded -ml-2 flex flex-row content-center gap-2 {active}").as_str())}
+            <div class={class("hover:bg-accent h-max w-full text-gray-500 hover:text-gray-300 select-none transition-all rounded -ml-2 flex flex-row content-center gap-2")}
                     {onclick}
-                    id={self.id}>
+                    id={id.to_string()}>
                 <Icons icon={"clock".to_string()} fill={"#000".to_string()} style={class("ml-4").to_string()} />
                 <p class={class("w-16 h-max text-xl")}>{&self.id}</p>
                 <p class={class("ml-4 h-max text-xl")}>{&self.title}</p>
