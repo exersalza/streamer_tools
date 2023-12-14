@@ -14,9 +14,12 @@ use serde::{Deserialize, Serialize};
 use super::utils::{class, query_parser, Data};
 extern crate shared;
 
+const SUB_TIMER: i32 = 6969;
+
 pub enum Msg {
     Tick(String),
     Persistent(Data),
+    Update(i32)
 }
 
 #[derive(Serialize, Deserialize)]
@@ -74,9 +77,7 @@ impl Time {
 
     /// Construct from seconds
     pub fn from(sec: i32) -> Self {
-        let seconds = sec % 60;
-        let minutes = (sec / 60) % 60;
-        let hours = (sec / 60) / 60;
+        let (hours, minutes, seconds) = Time::convert_seconds(sec);
 
         Self {
             hours,
@@ -85,10 +86,25 @@ impl Time {
         }
     }
 
+    /// Like the from the difference is just that you dont get an instance, you just get the values
+    /// hours -> minutes -> seconds
+    pub fn convert_seconds(sec: i32) -> (i32, i32, i32) {
+        let seconds = sec % 60;
+        let minutes = (sec / 60) % 60;
+        let hours = (sec / 60) / 60;
+
+        (hours, minutes, seconds)
+    }
+
     /// Convert the Time structs elements to seconds
     pub fn to_seconds(&self) -> i32 {
         // conversion from above but reversed and minified
         (self.hours * (60 * 60)) + (self.minutes * 60) + self.seconds
+    }
+
+    /// like to_seconds just that you dont have to have instance of the struct to use it
+    pub fn convert_time(hours: i32, minutes: i32, seconds: i32) -> i32 {
+        (hours * (60 * 60)) + (minutes * 60) + seconds
     }
 
     pub fn add_seconds(&mut self, sec: i32) {
@@ -100,6 +116,17 @@ impl Time {
         self.seconds = ret.seconds;
     }
 
+    pub fn update(&mut self, sec: i32) {
+        let (hours, minutes, seconds) = Self::convert_seconds(sec);
+        info!("{sec}");
+
+        self.hours = hours;
+        self.minutes = minutes;
+        self.seconds = seconds;
+    }
+
+
+    // From time in this case is ex. XX:XX:XX
     pub fn from_time(timer: String) -> Result<Self, ParseIntError> {
         let items: Vec<_> = timer.split(':').collect();
 
@@ -108,6 +135,33 @@ impl Time {
         let seconds: i32 = items[2].parse::<i32>()?;
 
         Ok(Self::new(hours, minutes, seconds))
+    }
+
+    pub fn inc_by_one(&mut self) {
+        self.seconds += 1;
+
+        if self.seconds == 60 {
+            self.seconds = 0;
+            self.minutes += 1;
+
+            if self.minutes == 60 {
+                self.minutes = 0;
+                self.hours += 1;
+            }
+        }
+    }
+
+    pub fn dec_by_one(&mut self) {
+        if self.seconds > 0 {
+            self.seconds -= 1;
+        } else if self.minutes > 0 {
+            self.minutes -= 1;
+            self.seconds = 59;
+        } else if self.hours > 0 {
+            self.hours -= 1;
+            self.minutes = 59;
+            self.seconds = 59;
+        }
     }
 }
 
@@ -182,7 +236,13 @@ impl Component for Timer {
         // connects to it via an websocket or something.
         // Interval::new(1000, move || {}).forget();
 
-        let mut ws = WebSocket::open(&*format!("ws://127.0.0.1:8080/ws/{}", props.ftype)).unwrap();
+        let ftype = if id == SUB_TIMER {
+            "sub".to_string()
+        } else {
+            props.ftype.clone()
+        };
+
+        let mut ws = WebSocket::open(&*format!("ws://127.0.0.1:8080/ws/{}", ftype)).unwrap();
         let (mut tx, mut rx) = ws.split();
 
         spawn_local(async move {
@@ -207,48 +267,33 @@ impl Component for Timer {
 
     fn update(&mut self, ctx: &Context<Self>, msg: Self::Message) -> bool {
         let props = ctx.props();
+
         match msg {
-            Msg::Tick(_) => {
-                let t = &props.ftype;
+            Msg::Tick(msg) => {
+                let mut t = props.ftype.clone();
 
                 if props.paused {
                     return false;
                 }
 
-                // implement just a timer that goes up
-                if t == "inc" {
-                    if self.id == 6969 {
-                        // do some special stuff here
-                    }
-
-                    self.timer.seconds += 1;
-
-                    if self.timer.seconds == 60 {
-                        self.timer.seconds = 0;
-                        self.timer.minutes += 1;
-
-                        if self.timer.minutes == 60 {
-                            self.timer.minutes = 0;
-                            self.timer.hours += 1;
-                        }
-                    }
-
-                    // implement function to parse seconds to Time
-                    return true;
+                if props.timer_id == SUB_TIMER {
+                    t = String::from("sub");
                 }
 
-                if self.timer.seconds > 0 {
-                    self.timer.seconds -= 1;
-                } else if self.timer.minutes > 0 {
-                    self.timer.minutes -= 1;
-                    self.timer.seconds = 59;
-                } else if self.timer.hours > 0 {
-                    self.timer.hours -= 1;
-                    self.timer.minutes = 59;
-                    self.timer.seconds = 59;
+                match t.as_str() {
+                    "sub" => {
+                        self.timer.update(msg.parse::<i32>().unwrap());
+                    },
+                    "inc" => {
+                        self.timer.inc_by_one();
+                    },
+                    _ => { // default decrement
+                        self.timer.dec_by_one();
+                    }
                 }
             }
             Msg::Persistent(data) => info!("{data:?}"),
+            Msg::Update(time) => self.timer = Time::from(time),
         };
         true
     }

@@ -1,8 +1,17 @@
-use log::info;
+use std::collections::HashMap;
+use std::future::Future;
+use log::{debug, info};
+use yew::platform::spawn_local;
 use yew::prelude::*;
 use yew_router::prelude::*;
+use itertools::Itertools;
 
-use components::{timer::Timer, utils::class};
+use components::{timer::Timer, utils::class, timer_item::TimerItem};
+use shared::globals::URL;
+use crate::components::utils::{Data, get};
+
+// todo:
+//  stuff -> show log of past events
 
 pub mod components;
 
@@ -13,25 +22,27 @@ struct Streamer {
 
 struct Base {
     streamer: Streamer,
-    paused: bool
+    paused: bool,
+    timer_list: HashMap<i64, (i64, String)>,
 }
 
 enum Msg {
-    ButtonClick
+    ButtonClick,
+    TimerList(String),
 }
 
 impl Component for Base {
     type Message = Msg;
     type Properties = ();
 
-    fn create(_ctx: &Context<Self>) -> Self {
+    fn create(ctx: &Context<Self>) -> Self {
         let links = vec![
             ("https://dashboard.twitch.tv/u/{}/home", "dashboard"),
             ("https://twitch.tv/{}", "livestream"),
         ];
 
         let mut streamer = Streamer {
-            name: String::from("betrayed"),
+            name: String::from("betrayedval"),
             links: vec![],
         };
 
@@ -43,13 +54,27 @@ impl Component for Base {
         }
 
         let paused = false;
+        let timer: HashMap<i64, (i64, String)> = HashMap::new();
+        let url = URL.lock().expect("can't lock").clone();
+        let link = ctx.link().clone();
 
-        Self { streamer, paused }
+        spawn_local(async move {
+            match get(format!("http://{url}/api/get_all_timer").as_str()).await {
+                Ok(data) => link.send_message(Msg::TimerList(data)),
+                Err(e) => log::error!("{e}")
+            };
+        });
+
+        Self { streamer, paused, timer_list: timer }
     }
 
     fn update(&mut self, ctx: &Context<Self>, msg: Self::Message) -> bool {
         match msg {
-            Msg::ButtonClick => self.paused = !self.paused
+            Msg::ButtonClick => self.paused = !self.paused,
+            Msg::TimerList(list) => {
+                let f: HashMap<i64, (i64, String)> = serde_json::from_str(list.as_str()).unwrap();
+                self.timer_list = f;
+            }
         }
         true
     }
@@ -80,11 +105,21 @@ impl Component for Base {
                     // top right / nav??
                     <div class={class("bg-base-light flex")}>
                         <Timer paused={&self.paused} hour=5 minute=2 class={class("relative left-[33%] top-4")} />
-                        <Timer timer_id=6969 ftype="inc" /> // we do a little bit of trolling here
+                        <Timer ftype="sub" paused={&self.paused} /> // we do a little bit of trolling here
                     </div>
                     // bottom left / item list
                     <div class={class("bg-base-light")}>
-
+                        <div class={class("h-full w-full flex flex-col gap-2 pt-2")}>
+                            {
+                                for self.timer_list.iter()
+                                            .sorted_by_key(|&id| id)
+                                            .map(|(id, time)| {
+                                    html! {
+                                        <TimerItem id={id} title={time.1.clone()} />
+                                    }
+                                })
+                            }
+                        </div>
                     </div>
                     // bottom right / body shows first item when created
                     <div class={class("bg-base rounded-tl-xl")}>
@@ -115,13 +150,14 @@ enum Route {
 }
 
 fn switch(routes: Route) -> Html {
-    let paused: Callback<bool> = Callback::from(move |_| {info!("paused")});
+    let paused: Callback<bool> = Callback::from(move |_| { info!("paused") });
     match routes {
         Route::Home => html! {<Base />},
         Route::Timer { id } => html! {<Timer timer_id={id} />},
         Route::TimerClean => html! {<Timer />},
         Route::NotFound => html! {
-        <p class={class("bg-base-light grid place-items-center h-screen w-screen text-text")}>{"404 not found"}</p>},
+            <p class={class("bg-base-light grid place-items-center h-screen w-screen text-text")}>{"404 not found"}</p>
+        },
     }
 }
 

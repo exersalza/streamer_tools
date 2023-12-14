@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::path::PathBuf;
 use std::str::FromStr;
+use std::sync::Mutex;
 
 use axum::extract::Path as axum_path;
 use axum::response::Html;
@@ -12,6 +13,7 @@ use axum::{
     Json,
 };
 use clap::Parser;
+use lazy_static::lazy_static;
 use log::debug;
 use serde_derive::{Deserialize, Serialize};
 use tokio::fs;
@@ -23,6 +25,7 @@ use tower_http::trace::TraceLayer;
 use crate::sql::Sql;
 use crate::subathon::subathon_timer::subathon_timer;
 use crate::ws::ws_handler;
+use shared::globals;
 
 mod config;
 mod sql;
@@ -35,6 +38,10 @@ use frontend::components::timer::*;
 // lazy_static! {
 //     pub static ref CONFIG: Mutex<Config> = Mutex::new(Config::new("./config.toml"));
 // }
+
+lazy_static! {
+    pub static ref SQL: Mutex<Sql> = Mutex::new(Sql::new());
+}
 
 #[derive(Parser, Debug)]
 #[clap(name = "server", about = "a randomly spawned server")]
@@ -66,6 +73,9 @@ async fn main() {
     if std::env::var("RUST_LOG").is_err() {
         std::env::set_var("RUST_LOG", format!("{},hyper=info,mio=info", opt.log_level))
     }
+
+    let mut url_lock = globals::URL.lock().expect("can't lock");
+    *url_lock = format!("{}:{}", opt.addr, opt.port);
 
     let timer_endpoints = Router::new()
         .route("/api/timer", post(timer_post))
@@ -119,8 +129,6 @@ async fn main() {
         .serve(app.into_make_service_with_connect_info::<SocketAddr>())
         .await
         .expect("Unable to start server");
-
-    log::info!("test");
 }
 
 #[derive(Debug, Deserialize)]
@@ -136,21 +144,21 @@ struct GetAllResponse {
     body: HashMap<i64, i64>,
 }
 
+// wrongly named here, we just get the time that the object holds
 async fn timer_get(axum_path(id): axum_path<i32>) -> impl IntoResponse {
-    let time = Sql::new().get_time(id);
+    let time = SQL.lock().expect("Can't lock").get_time(id);
 
     if time.is_none() {
         return "No timer".to_string();
     }
 
-    let timer: Timer = time.unwrap();
-
-    serde_json::to_string(&timer).unwrap()
+    // ._.
+    time.unwrap().timer.to_seconds().to_string()
 }
 
 async fn timer_del(axum_path(id): axum_path<i32>) -> impl IntoResponse {
     debug!("del triggers");
-    Sql::new().delete_timer(id);
+    SQL.lock().expect("Can't lock").delete_timer(id);
     format!("{id}")
 }
 
@@ -158,26 +166,27 @@ async fn timer_post(Json(data): Json<TimerPostBody>) -> impl IntoResponse {
     debug!("post {data:#?}");
     let mut timer: Timer = Timer::new();
     timer.convert_and_insert(data.id, data.hours, data.minutes, data.seconds);
-    Sql::new().create_timer(&timer);
+    SQL.lock().expect("Can't lock").create_timer(&timer);
 
-    format!("created {}", timer.id)
+    timer.id.to_string()
 }
 
 async fn timer_get_all() -> impl IntoResponse {
     debug!("get all timer");
 
-    let timers = Sql::new().get_all_timers();
+    let timers = SQL.lock().expect("Can't lock").get_all_timers();
     if timers.len() == 0 {
         return (StatusCode::OK, serde_json::to_string("{}").unwrap());
     }
 
-    let mut ret: HashMap<i64, i64> = HashMap::new();
+    let mut ret: HashMap<i64, (i64, String)> = HashMap::new();
 
-    for (key, value) in timers {
-        ret.insert(key, value);
+    for (id, time, title) in timers {
+        ret.insert(id, (time, title));
     }
 
-    let ret = GetAllResponse { body: ret };
+    println!("{ret:?}");
+
     (
         StatusCode::OK,
         serde_json::to_string(&ret).expect("Failed to create json"),
