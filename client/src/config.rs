@@ -1,7 +1,7 @@
 use std::fs;
 use std::process::exit;
 
-use serde_derive::Deserialize;
+use serde::Deserialize;
 use toml;
 
 #[derive(Deserialize)]
