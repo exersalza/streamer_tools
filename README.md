@@ -40,5 +40,5 @@
 And now you should be able to go on `http://localhost:8080` and see a working website
 
 
-### First preview of the webpanel :>
+### First preview of the webpanel :)
 ![mockup.png](.assets%2Fmockup.png)
