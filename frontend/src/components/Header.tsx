@@ -9,7 +9,7 @@ export function Header(props: HeaderProps) {
       <p className={"text-zinc-100 font-semibold"}>&lt;STREAMER_NAME&gt;</p>
       <div className={"flex place-items-center gap-2"}>
         <div className={`w-4 h-4 rounded-full ${props.connected ? "bg-green-500" : "bg-red-500"}`}></div> 
-        <p className={"text-zinc-100"}>Connected</p>
+        <p className={"text-zinc-100"}>{props.connected ? "" : "Not"} Connected</p>
       </div>
     </div>
   )

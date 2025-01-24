@@ -10,6 +10,7 @@ type States = {
 
 function App() {
   const [states, setStates] = useState<States>({ connected: false });
+
   return (
     <div className={"bg-zinc-900 h-screen flex flex-col"}>
       <Header connected={states.connected} />
