@@ -4,3 +4,4 @@ tailwind.css
 .idea/
 *.lock
 config.toml
+.sqlx/

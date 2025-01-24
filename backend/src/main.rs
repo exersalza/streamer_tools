@@ -1,14 +1,32 @@
-use std::net::TcpListener;
+pub mod config;
+pub mod macros;
+mod routes;
+pub mod sql;
 
-use axum::Router;
+use axum::{routing::get, Router};
+use sql::SQL;
+use tokio::net::TcpListener;
+use tower_http::cors::{Any, CorsLayer};
 
-async fn root() -> &str {
-    "hello"
+async fn root() -> String {
+    "hello".to_string()
 }
 
 #[tokio::main]
 async fn main() {
-    let router = Router::new().route("/", get(root));
+    let cors = CorsLayer::new()
+        .allow_methods(Any) // Allow all methods
+        .allow_origin(Any) // Allow all origins
+        .allow_headers(Any) // Allow all headers
+        .expose_headers(Any);
 
-    let listener = TcpListener::bind("0.0.0.0:72727").await.unwrap();
+    let router = Router::new()
+        .route("/", get(root))
+        .merge(routes::create_routes())
+        .layer(cors);
+
+    let listener = TcpListener::bind("0.0.0.0:22727").await.unwrap();
+    axum::serve(listener, router.into_make_service())
+        .await
+        .unwrap();
 }

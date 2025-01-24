@@ -4,5 +4,18 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+anyhow = "1.0.95"
 axum = { version = "0.8.1", features = ["ws"] }
+lazy_static = "1.5.0"
+notify = "8.0.0"
+parking_lot = "0.12.3"
+serde = { version = "1.0.217", features = ["derive"] }
+serde_derive = "1.0.217"
+sqlx = { version = "0.8.3", features = ["runtime-tokio", "sqlite"] }
+tokio = { version = "1.43.0", features = ["full"] }
 tokio-tungstenite = "=0.26.1"
+toml = "0.8.19"
+tower = "0.5.2"
+tower-http = { version = "0.6.2", features = ["full"] }
+futures-util = "0.3"
+uuid = { version = "1.12.1", features = ["serde", "v4"] }
