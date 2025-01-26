@@ -1,8 +1,9 @@
 use std::{str::FromStr, sync::Arc};
 
+use anyhow::anyhow;
 use lazy_static::lazy_static;
 use parking_lot::Mutex;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use sqlx::{Executor, Sqlite, SqlitePool};
 use uuid::Uuid;
 
@@ -17,7 +18,7 @@ pub struct Sql {
 
 // this should be all valid events that can increase the timer
 // maybe add channel points later for the maniacs out there
-#[derive(Clone, Serialize, Debug)]
+#[derive(Clone, Serialize, Debug, Deserialize)]
 pub struct IncTimes {
     follow: Option<i64>,
     sub_t1: Option<i64>,
@@ -29,12 +30,20 @@ pub struct IncTimes {
     bits_n: Option<i64>,
 }
 
-#[derive(Serialize, Debug)]
+#[derive(Serialize, Debug, Deserialize)]
 pub struct Timer {
     pub id: Uuid,
     pub timer: Option<i64>, // when the timer is supposed to end
     pub name: String,       // name of the timer duh
     pub increase_times: IncTimes,
+}
+
+
+#[derive(Serialize, Debug, Deserialize)]
+pub struct StrippedTimer {
+    pub id: Uuid,
+    pub timer: Option<i64>, // when the timer is supposed to end
+    pub name: String,       // name of the timer duh
 }
 
 #[allow(clippy::new_without_default)]
@@ -46,8 +55,8 @@ impl Sql {
         Self { pool }
     }
 
-    pub async fn get_timers(&self) -> anyhow::Result<Vec<Timer>> {
-        let res = sqlx::query!("SELECT s.id, s.name, s.time, t.follow, t.sub_t1, t.sub_t2, t.sub_t3, t.dono_each_n, t.dono_n, t.bits_each_n, t.bits_n FROM timer AS s LEFT OUTER JOIN timer_go_down_by AS t ON s.id = t.id;")
+    pub async fn get_timer(&self, id: String) -> anyhow::Result<Vec<Timer>> {
+        let res = sqlx::query!("SELECT s.id, s.name, s.time, t.follow, t.sub_t1, t.sub_t2, t.sub_t3, t.dono_each_n, t.dono_n, t.bits_each_n, t.bits_n FROM timer AS s LEFT OUTER JOIN timer_go_down_by AS t ON s.id = t.id where t.id = ?", id)
             .fetch_all(&self.pool)
             .await?;
 
@@ -73,5 +82,76 @@ impl Sql {
         });
 
         Ok(ret)
+    }
+
+    pub async fn get_all_timer(&self) -> anyhow::Result<Vec<StrippedTimer>> {
+
+        let res = sqlx::query!("SELECT s.id, s.name, s.time, t.follow, t.sub_t1, t.sub_t2, t.sub_t3, t.dono_each_n, t.dono_n, t.bits_each_n, t.bits_n FROM timer AS s LEFT OUTER JOIN timer_go_down_by AS t ON s.id = t.id")
+            .fetch_all(&self.pool)
+            .await?;
+
+        let mut ret = vec![];
+
+        // what a mess, optimize later
+        res.iter().for_each(|item| {
+            ret.push(StrippedTimer {
+                id: Uuid::from_str(&item.id).unwrap_or(Uuid::default()),
+                name: item.name.clone(),
+                timer: Some(item.time.unwrap_or(0)),
+            });
+        });
+
+        Ok(ret)
+    }
+
+    pub async fn post_create_timer(&self, payload: Timer) -> anyhow::Result<()> {
+        let id = payload.id.to_string();
+
+        let _ = sqlx::query!(
+            r#"INSERT INTO timer (id, name, time) values (?, ?, ?)"#,
+            id,
+            payload.name,
+            payload.timer
+        ).execute(&self.pool).await?;
+
+
+        // yanky ass queries
+        let _ = sqlx::query!("INSERT INTO timer_go_down_by (id, follow, sub_t1, sub_t2, sub_t3, dono_each_n, dono_n, bits_each_n, bits_n) values (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            id, 
+            payload.increase_times.follow, 
+            payload.increase_times.sub_t1,
+            payload.increase_times.sub_t2,
+            payload.increase_times.sub_t3,
+            payload.increase_times.dono_each_n,
+            payload.increase_times.dono_n,
+            payload.increase_times.bits_each_n,
+            payload.increase_times.bits_n
+        ).execute(&self.pool).await?;
+        Ok(())
+    }
+
+    // janky ass function, gotta code something for this
+    pub async fn post_update_timer(&self, payload: Timer) -> anyhow::Result<()> {
+        let id = payload.id.to_string();
+
+        let _ = sqlx::query!(
+            r#"update timer set name = ?, time = ? where id = ?"#,
+            payload.name,
+            payload.timer,
+            id
+        ).execute(&self.pool).await?;
+
+        let _ = sqlx::query!("UPDATE timer_go_down_by set follow = ?, sub_t1 = ?, sub_t2 = ?, sub_t3 = ?, dono_each_n = ?, dono_n = ?, bits_each_n = ?, bits_n = ? where id = ?",
+            payload.increase_times.follow, 
+            payload.increase_times.sub_t1,
+            payload.increase_times.sub_t2,
+            payload.increase_times.sub_t3,
+            payload.increase_times.dono_each_n,
+            payload.increase_times.dono_n,
+            payload.increase_times.bits_each_n,
+            payload.increase_times.bits_n,
+            id
+        ).execute(&self.pool).await?;
+        Ok(())
     }
 }

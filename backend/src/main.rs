@@ -4,7 +4,6 @@ mod routes;
 pub mod sql;
 
 use axum::{routing::get, Router};
-use sql::SQL;
 use tokio::net::TcpListener;
 use tower_http::cors::{Any, CorsLayer};
 

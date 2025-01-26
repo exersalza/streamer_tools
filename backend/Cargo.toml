@@ -11,6 +11,7 @@ notify = "8.0.0"
 parking_lot = "0.12.3"
 serde = { version = "1.0.217", features = ["derive"] }
 serde_derive = "1.0.217"
+serde_json = "1.0"
 sqlx = { version = "0.8.3", features = ["runtime-tokio", "sqlite"] }
 tokio = { version = "1.43.0", features = ["full"] }
 tokio-tungstenite = "=0.26.1"
@@ -19,3 +20,5 @@ tower = "0.5.2"
 tower-http = { version = "0.6.2", features = ["full"] }
 futures-util = "0.3"
 uuid = { version = "1.12.1", features = ["serde", "v4"] }
+futures = "0.3.31"
+reqwest = "0.12.12"

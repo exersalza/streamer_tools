@@ -4,12 +4,16 @@ import { Header } from './components/Header'
 import { SideBar } from './components/SideBar'
 import { useState } from 'preact/hooks'
 import { Icons } from './components/Icons'
+import { Settings } from './components/Settings'
+import { Dashboard } from './components/Dashboard'
+import { CreateTimerOverlay } from './components/Timer'
 
 type States = {
-  connected: boolean
+  connected: boolean,
+  showSettings: boolean,
 }
 
-type TimersType = {
+export type TimerType = {
   id: string,
   name: string,
   timer: number,
@@ -27,16 +31,25 @@ type TimersType = {
 
 
 function App() {
-  const [states, setStates] = useState<States>({ connected: false });
+  const [states, setStates] = useState<States>({ connected: false, showSettings: false });
+  const [activeTab, setActiveTab] = useState("dashboard");
 
   return (
     <div className={"bg-gray-950 h-screen flex flex-col"}>
       <Header connected={states.connected} />
-      <div className={"h-full"}>
-        <SideBar />
+      {states.showSettings /* && <Settings /> */}
+      <CreateTimerOverlay hidden={false} />
+
+      <div className={"h-full flex"}>
+        <SideBar active={activeTab} setActiveTab={setActiveTab} />
+        <div className={"w-full"}>
+          {
+            activeTab === "dashboard" ? <Dashboard /> : ""
+          }
+        </div>
       </div>
-      <div className={"absolute bottom-1 left-1/2 "}>
-        <a href={"https://github.com/exersalza/streamer_tools"} target={"_blank"} className={"text-gray-600 hover:text-gray-500 transition-colors flex place-items-center gap-1 font-semibold select-none"}>Made with <span className={"text-red-500/60"}>{Icons.heart_with_auto_fill}</span> by exersalza</a>
+      <div className={"absolute flex h-screen w-screen justify-center items-end pointer-events-none"}>
+        <a href={"https://github.com/exersalza/streamer_tools"} target={"_blank"} className={"pointer-events-auto text-gray-600 hover:text-gray-500 transition-colors flex place-items-center gap-1 font-semibold select-none"}>Made with <span className={"text-red-500/60"}>{Icons.heart_with_auto_fill}</span> by exersalza</a>
       </div>
     </div>
   )
