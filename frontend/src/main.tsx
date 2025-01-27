@@ -4,7 +4,6 @@ import { Header } from './components/Header'
 import { SideBar } from './components/SideBar'
 import { useState } from 'preact/hooks'
 import { Icons } from './components/Icons'
-import { Settings } from './components/Settings'
 import { Dashboard } from './components/Dashboard'
 import { CreateTimerOverlay } from './components/Timer'
 
