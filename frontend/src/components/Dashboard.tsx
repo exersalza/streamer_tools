@@ -8,8 +8,12 @@ type States = {
   timer: TimerType[]
 }
 
+interface Props {
+  openTimerOverlay: () => void
+}
 
-export function Dashboard() {
+
+export function Dashboard(props: Props) {
   const [state, setState] = useState<States>({ timer: [] });
 
   useEffect(() => {
@@ -32,7 +36,7 @@ export function Dashboard() {
         <div className={"flex gap-2"}>
           <button
             className={`rounded transition-all h-8 bg-gray-800 hover:bg-gray-700 min-w-40 cursor-pointer`}>
-            <p className={"text-zinc-100 flex gap-2 px-1 place-items-center"}>{Icons.circle_add} Create timer</p>
+            <p className={"text-zinc-100 flex gap-2 px-1 place-items-center"} onClick={props.openTimerOverlay}>{Icons.circle_add} Create timer</p>
           </button>
 
         </div>

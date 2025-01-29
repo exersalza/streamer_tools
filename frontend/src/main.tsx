@@ -6,10 +6,12 @@ import { useState } from 'preact/hooks'
 import { Icons } from './components/Icons'
 import { Dashboard } from './components/Dashboard'
 import { CreateTimerOverlay } from './components/Timer'
+import { Settings } from './components/Settings'
 
 type States = {
   connected: boolean,
   showSettings: boolean,
+  showCreateTimerOverlay: boolean,
 }
 
 export type TimerType = {
@@ -30,20 +32,25 @@ export type TimerType = {
 
 
 function App() {
-  const [states, setStates] = useState<States>({ connected: false, showSettings: false });
+  const [states, setStates] = useState<States>({ connected: false, showSettings: false, showCreateTimerOverlay: true });
   const [activeTab, setActiveTab] = useState("dashboard");
+  const [update, setUpdate] = useState(0);
 
   return (
     <div className={"bg-gray-950 h-screen flex flex-col"}>
       <Header connected={states.connected} />
-      {states.showSettings /* && <Settings /> */}
-      <CreateTimerOverlay hidden={false} />
+      <Settings hidden={!states.showSettings} />
+      <CreateTimerOverlay hidden={!states.showCreateTimerOverlay} hideWindow={() => {
+        setStates((prev) => ({...prev, showCreateTimerOverlay: false}))
+      }} update={} />
 
       <div className={"h-full flex"}>
         <SideBar active={activeTab} setActiveTab={setActiveTab} />
         <div className={"w-full"}>
           {
-            activeTab === "dashboard" ? <Dashboard /> : ""
+            activeTab === "dashboard" ? <Dashboard openTimerOverlay={() => {
+              setStates((prev) => ({...prev, showCreateTimerOverlay: !prev.showCreateTimerOverlay}))
+            }} /> : ""
           }
         </div>
       </div>

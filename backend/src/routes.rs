@@ -76,9 +76,9 @@ async fn get_timer(Query(query): Query<FetchTimer>) -> impl IntoResponse {
 
 async fn post_create_timer(Json(payload): Json<Timer>) -> impl IntoResponse {
     if SQL.post_create_timer(payload).await.is_ok() {
-        return (StatusCode::OK, String::new());
+        return (StatusCode::OK, "Timer created");
     }
-    (StatusCode::INTERNAL_SERVER_ERROR, "broke".to_string())
+    (StatusCode::INTERNAL_SERVER_ERROR, "broke")
 }
 
 async fn post_update_timer(Json(payload): Json<Timer>) -> impl IntoResponse {

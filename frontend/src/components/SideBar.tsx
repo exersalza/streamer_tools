@@ -15,7 +15,7 @@ interface Props {
 }
 
 export function SideBar(props: Props) {
-  const [state, setState] = useState<States>({ timer: [], current_view_timer: "9a8c401a-0750-4678-8a73-65ac59bcb66e" });
+  const [state, setState] = useState<States>({ timer: [], current_view_timer: "" });
 
   useEffect(() => {
     fetch(API + "/get_all_timers").then(async (res) => {

@@ -35,16 +35,10 @@ pub struct Timer {
     pub id: Uuid,
     pub timer: Option<i64>, // when the timer is supposed to end
     pub name: String,       // name of the timer duh
+    pub main: bool,
     pub increase_times: IncTimes,
 }
 
-
-#[derive(Serialize, Debug, Deserialize)]
-pub struct StrippedTimer {
-    pub id: Uuid,
-    pub timer: Option<i64>, // when the timer is supposed to end
-    pub name: String,       // name of the timer duh
-}
 
 #[allow(clippy::new_without_default)]
 impl Sql {
@@ -56,7 +50,7 @@ impl Sql {
     }
 
     pub async fn get_timer(&self, id: String) -> anyhow::Result<Vec<Timer>> {
-        let res = sqlx::query!("SELECT s.id, s.name, s.time, t.follow, t.sub_t1, t.sub_t2, t.sub_t3, t.dono_each_n, t.dono_n, t.bits_each_n, t.bits_n FROM timer AS s LEFT OUTER JOIN timer_go_down_by AS t ON s.id = t.id where t.id = ?", id)
+        let res = sqlx::query!("SELECT s.id, s.name, s.time, s.main, t.follow, t.sub_t1, t.sub_t2, t.sub_t3, t.dono_each_n, t.dono_n, t.bits_each_n, t.bits_n FROM timer AS s LEFT OUTER JOIN timer_go_down_by AS t ON s.id = t.id where t.id = ?", id)
             .fetch_all(&self.pool)
             .await?;
 
@@ -68,6 +62,7 @@ impl Sql {
                 id: Uuid::from_str(&item.id).unwrap_or(Uuid::default()),
                 name: item.name.clone(),
                 timer: Some(item.time.unwrap_or(0)),
+                main: item.main.unwrap_or(0) == 1,
                 increase_times: IncTimes {
                     follow: item.follow,
                     sub_t1: item.sub_t1,
@@ -84,9 +79,9 @@ impl Sql {
         Ok(ret)
     }
 
-    pub async fn get_all_timer(&self) -> anyhow::Result<Vec<StrippedTimer>> {
+    pub async fn get_all_timer(&self) -> anyhow::Result<Vec<Timer>> {
 
-        let res = sqlx::query!("SELECT s.id, s.name, s.time, t.follow, t.sub_t1, t.sub_t2, t.sub_t3, t.dono_each_n, t.dono_n, t.bits_each_n, t.bits_n FROM timer AS s LEFT OUTER JOIN timer_go_down_by AS t ON s.id = t.id")
+        let res = sqlx::query!("SELECT s.id, s.name, s.time, s.main, t.follow, t.sub_t1, t.sub_t2, t.sub_t3, t.dono_each_n, t.dono_n, t.bits_each_n, t.bits_n FROM timer AS s LEFT OUTER JOIN timer_go_down_by AS t ON s.id = t.id")
             .fetch_all(&self.pool)
             .await?;
 
@@ -94,10 +89,21 @@ impl Sql {
 
         // what a mess, optimize later
         res.iter().for_each(|item| {
-            ret.push(StrippedTimer {
+            ret.push(Timer {
                 id: Uuid::from_str(&item.id).unwrap_or(Uuid::default()),
                 name: item.name.clone(),
                 timer: Some(item.time.unwrap_or(0)),
+                main: item.main.unwrap_or(0) == 1,
+                increase_times: IncTimes {
+                    follow: item.follow,
+                    sub_t1: item.sub_t1,
+                    sub_t2: item.sub_t2,
+                    sub_t3: item.sub_t3,
+                    dono_each_n: item.dono_each_n,
+                    dono_n: item.dono_n,
+                    bits_each_n: item.bits_each_n,
+                    bits_n: item.bits_n,
+                },
             });
         });
 
@@ -108,10 +114,11 @@ impl Sql {
         let id = payload.id.to_string();
 
         let _ = sqlx::query!(
-            r#"INSERT INTO timer (id, name, time) values (?, ?, ?)"#,
+            r#"INSERT INTO timer (id, name, time, main) values (?, ?, ?, ?)"#,
             id,
             payload.name,
-            payload.timer
+            payload.timer,
+            payload.main
         ).execute(&self.pool).await?;
 
 
@@ -135,9 +142,10 @@ impl Sql {
         let id = payload.id.to_string();
 
         let _ = sqlx::query!(
-            r#"update timer set name = ?, time = ? where id = ?"#,
+            r#"update timer set name = ?, time = ?, main = ? where id = ?"#,
             payload.name,
             payload.timer,
+            payload.main,
             id
         ).execute(&self.pool).await?;
 

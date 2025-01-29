@@ -1,6 +1,10 @@
-export function Settings() {
+interface Props {
+  hidden: boolean
+}
+
+export function Settings(props: Props) {
   return (
-    <div className={"h-screen w-screen absolute z-50 grid place-items-center"}>
+    <div className={`h-screen w-screen absolute z-50 grid place-items-center ${props.hidden ? "hidden" : ""}`}>
       <div className={"bg-gray-800 h-120 w-80 rounded-xl p-2 border-1 border-gray-700 flex flex-col"}>
         <p className={"text-zinc-100 font-semibold"}>Settings</p>
         <div>

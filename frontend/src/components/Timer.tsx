@@ -2,6 +2,7 @@ import { useRef, useState } from "preact/hooks";
 import { TimerType } from "../main"
 import { Icons } from "./Icons";
 import { ChangeEvent } from "preact/compat";
+import { API } from "./utils";
 
 type States = {}
 
@@ -26,7 +27,7 @@ export function TimerButton(props: TimerButtonProps) {
 
 interface TimerProps {
   name: string,
-  uuid: string
+  uuid: string,
 }
 
 export function Timer(props: TimerProps) {
@@ -39,25 +40,44 @@ export function Timer(props: TimerProps) {
 
 
 interface TimerOverlayProps {
-  hidden: boolean
+  hidden: boolean,
+  hideWindow: () => void,
+  update: (prev: number) => void
 }
 
 export function CreateTimerOverlay(props: TimerOverlayProps) {
-  const [values, setValues] = useState({ hour: "", minute: "", second: "", main: false });
+  const [values, setValues] = useState(
+    {
+      main: false,
+      hour: 0,
+      minute: 0,
+      second: 0,
+      follow: 0,
+      sub_t1: 0,
+      sub_t2: 0,
+      sub_t3: 0,
+      bits_each_n: 0,
+      bits_n: 0,
+      dono_each_n: 0,
+      dono_n: 0,
+    },
+  );
 
   const blockInvalidChar = (e: KeyboardEvent) => ['e', 'E', '+', '-'].includes(e.key) && e.preventDefault();
 
   const value_thing = {
     // change titles
-    "follow": [ "Follow", "" ],
-    "sub_t1": [ "Tier 1 Sub", "" ],
-    "sub_t2": [ "Tier 2 Sub", "" ],
-    "sub_t3": [ "Tier 3 Sub", "" ],
-    "bits_each_n": [ "(Bits) X amount spent", "border-yellow-700" ],
-    "bits_n": [ "(Bits) Increase time by", "border-yellow-700" ],
-    "dono_each_n": [ "(Dono) X amount spent", "border-green-700" ],
-    "dono_n": [ "(Dono) Increase time by", "border-green-700" ],
+    "follow": ["Follow", ""],
+    "sub_t1": ["Tier 1 Sub", ""],
+    "sub_t2": ["Tier 2 Sub", ""],
+    "sub_t3": ["Tier 3 Sub", ""],
+    "bits_each_n": ["(Bits) X amount spent", "border-yellow-700"],
+    "bits_n": ["(Bits) Increase time by", "border-yellow-700"],
+    "dono_each_n": ["(Dono) X amount spent", "border-green-700"],
+    "dono_n": ["(Dono) Increase time by", "border-green-700"],
   }
+
+  let name = useRef<HTMLInputElement>();
 
   function minMax(e: InputEvent) {
     const target = e.target as HTMLInputElement;
@@ -76,27 +96,52 @@ export function CreateTimerOverlay(props: TimerOverlayProps) {
       }
     }
 
-    if (targetId === "hour") return;
-
-    let v = target.valueAsNumber;
-
-    console.log(targetId)
-    if (v >= 59) {
-      setValues((prev) => ({ ...prev, [targetId]: 59 }))
-    }
-
-    if (v < 0) {
+    if (target.valueAsNumber < 0) {
       setValues((prev) => ({ ...prev, [targetId]: 0 }))
     }
+
+    if (targetId === "minute" || targetId === "second") {
+      if (target.valueAsNumber >= 59) {
+        setValues((prev) => ({ ...prev, [targetId]: 59 }))
+      }
+    };
+  }
+
+  function createTimer() {
+    fetch(API + "/post_create_timer", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        id: crypto.randomUUID(),
+        name: name.current?.value,
+        main: values.main,
+        timer: (values.hour * 60 * 60) + (values.minute * 60) + values.second,
+        increase_times: {
+          follow: values.follow,
+          sub_t1: values.sub_t1,
+          sub_t2: values.sub_t2,
+          sub_t3: values.sub_t3,
+          bits_each_n: values.bits_each_n,
+          bits_n: values.bits_n,
+          dono_each_n: values.dono_each_n,
+          dono_n: values.dono_n,
+        }
+      })
+    }).then(async (res) => {
+      if (!res.ok) console.log(await res.text());
+      props.hideWindow();
+    });
   }
 
   return (
-    <div className={`${props.hidden ? "hidden" : ""} h-screen w-screen absolute backdrop-blur-xs z-50 grid place-content-center`}>
+    <div className={`${props.hidden ? "hidden" : ""} transition-all h-screen w-screen absolute backdrop-blur-xs z-50 grid place-content-center`}>
       <div className={"h-170 w-80 bg-gray-900 rounded-lg flex-col border-1 border-gray-800 p-2"}>
         <p className={"text-zinc-100 text-lg flex flex-col place-items-center "}>Create a timer</p>
         <div className={"flex flex-col gap-2"}>
           <label for={"timer-creation-name"} className={"text-zinc-100"}>Timer name</label>
-          <input id={"timer-creation-name"} placeholder={"what-a-timer"} className={"border-1 border-gray-700 rounded text-zinc-100 p-2"} maxlength={50} />
+          <input id={"timer-creation-name"} placeholder={"what-a-timer"} ref={name} className={"border-1 border-gray-700 rounded text-zinc-100 p-2"} maxlength={50} />
 
           <label for={"timer-creation-times"} className={"text-zinc-100"}>Initial time</label>
           <div className={"flex place-items-baseline gap-2"}>
@@ -113,7 +158,7 @@ export function CreateTimerOverlay(props: TimerOverlayProps) {
               Object.keys(value_thing).map((key) => {
                 return (
                   <div className={"flex place-items-center gap-2"}>
-                    <input id={`timer-creation-${key}`} className={`border-1 w-20 border-gray-700 rounded text-zinc-100 p-2 ${value_thing[key][1]}`} type="number" onKeyDown={blockInvalidChar} />
+                    <input id={`timer-creation-increases-${key}`} value={values[key]} className={`border-1 w-20 border-gray-700 rounded text-zinc-100 p-2 ${value_thing[key][1]}`} type="number" onKeyDown={blockInvalidChar} onInput={minMax} />
                     <p className={`text-zinc-100 }`}>{value_thing[key][0]}</p>
                   </div>
                 )
@@ -121,18 +166,18 @@ export function CreateTimerOverlay(props: TimerOverlayProps) {
             }
           </div>
         </div>
-        <div className={"mt-2 flex gap-2"}  title={"something"}>
+        <div className={"mt-2 flex gap-2"} title={"something"}>
           <input type="checkbox" id={"timer-creation-main"} checked={values.main} onChange={() => { setValues((prev) => ({ ...prev, main: !prev.main })) }} />
           <label for={"timer-creation-main"} className={"text-zinc-100 select-none"}>Mark as Main timer</label>
         </div>
         <div className={"flex w-full gap-2 mt-3"}>
           <button
-            onClick={() => { }}
+            onClick={createTimer}
             className={`cursor-pointer text-zinc-100 rounded transition-all h-8 w-full bg-gray-700 hover:bg-gray-600`}>
             Create
           </button>
           <button
-            onClick={() => { }}
+            onClick={props.hideWindow}
             className={`cursor-pointer text-zinc-100 rounded transition-all h-8 w-full bg-gray-700 hover:bg-gray-600`}>
             Abort
           </button>

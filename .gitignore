@@ -5,3 +5,4 @@ tailwind.css
 *.lock
 config.toml
 .sqlx/
+*.sqlite
