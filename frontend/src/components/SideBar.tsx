@@ -10,8 +10,9 @@ type States = {
 }
 
 interface Props {
-  active: string
-  setActiveTab: any
+  active: string;
+  setActiveTab: any;
+  update: number;
 }
 
 export function SideBar(props: Props) {
@@ -27,7 +28,7 @@ export function SideBar(props: Props) {
       const d = await res.json();
       setState((prev) => ({ ...prev, timer: d }));
     })
-  }, [])
+  }, [props.update])
 
   return (
     <div className={"h-full bg-gray-900 w-60 p-2 flex flex-col gap-2 border-r-1 border-gray-800"}>

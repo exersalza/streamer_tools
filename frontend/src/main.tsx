@@ -2,7 +2,7 @@ import { render } from 'preact'
 import './index.css'
 import { Header } from './components/Header'
 import { SideBar } from './components/SideBar'
-import { useState } from 'preact/hooks'
+import { useEffect, useState } from 'preact/hooks'
 import { Icons } from './components/Icons'
 import { Dashboard } from './components/Dashboard'
 import { CreateTimerOverlay } from './components/Timer'
@@ -32,30 +32,34 @@ export type TimerType = {
 
 
 function App() {
-  const [states, setStates] = useState<States>({ connected: false, showSettings: false, showCreateTimerOverlay: true });
+  const [states, setStates] = useState<States>({ connected: false, showSettings: false, showCreateTimerOverlay: false });
   const [activeTab, setActiveTab] = useState("dashboard");
   const [update, setUpdate] = useState(0);
+
+  useEffect(() => {
+    console.log("update")
+  }, [update])
 
   return (
     <div className={"bg-gray-950 h-screen flex flex-col"}>
       <Header connected={states.connected} />
       <Settings hidden={!states.showSettings} />
       <CreateTimerOverlay hidden={!states.showCreateTimerOverlay} hideWindow={() => {
-        setStates((prev) => ({...prev, showCreateTimerOverlay: false}))
-      }} update={} />
+        setStates((prev) => ({ ...prev, showCreateTimerOverlay: false }))
+      }} update={setUpdate} />
 
       <div className={"h-full flex"}>
-        <SideBar active={activeTab} setActiveTab={setActiveTab} />
+        <SideBar active={activeTab} setActiveTab={setActiveTab} update={update} />
         <div className={"w-full"}>
           {
-            activeTab === "dashboard" ? <Dashboard openTimerOverlay={() => {
-              setStates((prev) => ({...prev, showCreateTimerOverlay: !prev.showCreateTimerOverlay}))
+            activeTab === "dashboard" ? <Dashboard update={update} openTimerOverlay={() => {
+              setStates((prev) => ({ ...prev, showCreateTimerOverlay: !prev.showCreateTimerOverlay }))
             }} /> : ""
           }
         </div>
       </div>
       <div className={"absolute flex h-screen w-screen justify-center items-end pointer-events-none"}>
-        <a href={"https://github.com/exersalza/streamer_tools"} target={"_blank"} className={"pointer-events-auto text-gray-600 hover:text-gray-500 transition-colors flex place-items-center gap-1 font-semibold select-none"}>Made with <span className={"text-red-500/60"}>{Icons.heart_with_auto_fill}</span> by exersalza</a>
+        <a href={"https://github.com/exersalza/streamer_tools"} target={"_blank"} className={"pointer-events-auto text-gray-600 hover:text-gray-500 transition-colors text-sm flex place-items-center gap-1 font-semibold select-none"}>Made with <span className={"text-red-500/60"}>{Icons.heart_with_auto_fill}</span> by exersalza</a>
       </div>
     </div>
   )

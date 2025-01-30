@@ -9,7 +9,8 @@ type States = {
 }
 
 interface Props {
-  openTimerOverlay: () => void
+  openTimerOverlay: () => void;
+  update: number;
 }
 
 
@@ -26,7 +27,7 @@ export function Dashboard(props: Props) {
       const d = await res.json();
       setState((prev) => ({ ...prev, timer: d }));
     })
-  }, [])
+  }, [props.update])
 
   return (
     <div className={"w-full h-full p-2 flex flex-col gap-8"}>
@@ -44,7 +45,7 @@ export function Dashboard(props: Props) {
 
       <div className={"flex flex-col gap-2"}>
         <p className={"text-zinc-200 text-lg"}>All timers</p>
-        <div className={"flex gap-2"}>
+        <div className={"flex gap-2 flex-wrap"}>
           {state.timer.map((timer) => {
             return <TimerButton data={timer} active={""} />
           })}

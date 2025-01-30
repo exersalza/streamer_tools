@@ -3,6 +3,7 @@ use std::{str::FromStr, sync::Arc};
 use anyhow::anyhow;
 use lazy_static::lazy_static;
 use parking_lot::Mutex;
+use reqwest::header::Keys;
 use serde::{Deserialize, Serialize};
 use sqlx::{Executor, Sqlite, SqlitePool};
 use uuid::Uuid;
@@ -37,6 +38,18 @@ pub struct Timer {
     pub name: String,       // name of the timer duh
     pub main: bool,
     pub increase_times: IncTimes,
+    pub is_active: bool,
+    pub color: String
+}
+
+#[derive(Serialize, Debug, Deserialize)]
+pub struct StrippedTimer {
+    pub id: Uuid,
+    pub timer: Option<i64>, // when the timer is supposed to end
+    pub name: String,       // name of the timer duh
+    pub main: bool,
+    pub is_active: bool,
+    pub color: String
 }
 
 
@@ -50,7 +63,7 @@ impl Sql {
     }
 
     pub async fn get_timer(&self, id: String) -> anyhow::Result<Vec<Timer>> {
-        let res = sqlx::query!("SELECT s.id, s.name, s.time, s.main, t.follow, t.sub_t1, t.sub_t2, t.sub_t3, t.dono_each_n, t.dono_n, t.bits_each_n, t.bits_n FROM timer AS s LEFT OUTER JOIN timer_go_down_by AS t ON s.id = t.id where t.id = ?", id)
+        let res = sqlx::query!("SELECT s.id, s.name, s.time, s.main, s.is_active, s.color, t.follow, t.sub_t1, t.sub_t2, t.sub_t3, t.dono_each_n, t.dono_n, t.bits_each_n, t.bits_n FROM timer AS s LEFT OUTER JOIN timer_go_down_by AS t ON s.id = t.id where t.id = ?", id)
             .fetch_all(&self.pool)
             .await?;
 
@@ -63,6 +76,8 @@ impl Sql {
                 name: item.name.clone(),
                 timer: Some(item.time.unwrap_or(0)),
                 main: item.main.unwrap_or(0) == 1,
+                is_active: item.is_active.unwrap_or(0) == 1,
+                color: item.color.clone().unwrap_or("#000000".into()),
                 increase_times: IncTimes {
                     follow: item.follow,
                     sub_t1: item.sub_t1,
@@ -79,9 +94,9 @@ impl Sql {
         Ok(ret)
     }
 
-    pub async fn get_all_timer(&self) -> anyhow::Result<Vec<Timer>> {
+    pub async fn get_all_timer(&self) -> anyhow::Result<Vec<StrippedTimer>> {
 
-        let res = sqlx::query!("SELECT s.id, s.name, s.time, s.main, t.follow, t.sub_t1, t.sub_t2, t.sub_t3, t.dono_each_n, t.dono_n, t.bits_each_n, t.bits_n FROM timer AS s LEFT OUTER JOIN timer_go_down_by AS t ON s.id = t.id")
+        let res = sqlx::query!("SELECT id, name, time, main, is_active, color FROM timer")
             .fetch_all(&self.pool)
             .await?;
 
@@ -89,21 +104,14 @@ impl Sql {
 
         // what a mess, optimize later
         res.iter().for_each(|item| {
-            ret.push(Timer {
+            ret.push(StrippedTimer {
                 id: Uuid::from_str(&item.id).unwrap_or(Uuid::default()),
                 name: item.name.clone(),
                 timer: Some(item.time.unwrap_or(0)),
                 main: item.main.unwrap_or(0) == 1,
-                increase_times: IncTimes {
-                    follow: item.follow,
-                    sub_t1: item.sub_t1,
-                    sub_t2: item.sub_t2,
-                    sub_t3: item.sub_t3,
-                    dono_each_n: item.dono_each_n,
-                    dono_n: item.dono_n,
-                    bits_each_n: item.bits_each_n,
-                    bits_n: item.bits_n,
-                },
+                is_active: item.is_active.unwrap_or(0) == 1,
+                color: item.color.clone().unwrap_or("#000000".into()),
+
             });
         });
 
@@ -114,11 +122,13 @@ impl Sql {
         let id = payload.id.to_string();
 
         let _ = sqlx::query!(
-            r#"INSERT INTO timer (id, name, time, main) values (?, ?, ?, ?)"#,
+            r#"INSERT INTO timer (id, name, time, main, is_active, color) values (?, ?, ?, ?, ?, ?)"#,
             id,
             payload.name,
             payload.timer,
-            payload.main
+            payload.main,
+            payload.is_active,
+            payload.color
         ).execute(&self.pool).await?;
 
 
