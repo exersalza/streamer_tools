@@ -21,6 +21,8 @@ export type TimerType = {
   timer: number,
   color: string,
   main: boolean,
+  overtitle: string | undefined,
+  undertitle: string | undefined,
   increase_times: {
     follow: number | undefined,
     sub_t1: number | undefined,
@@ -61,17 +63,16 @@ function App() {
   if (loading) {
     return (
       <div>
-
+        {Icons.beer_spin}
       </div>
     )
   }
 
 
-  console.log(timerIds.includes(location.pathname))
   return (
     <div>
       {
-        timerIds.includes(location.pathname) ?
+        timerIds.includes(location.pathname.replace("/", "")) ?
           <TimerWidget /> :
           <div className={"bg-gray-950 h-screen flex flex-col"}>
             <Header connected={states.connected} />

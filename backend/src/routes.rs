@@ -1,7 +1,7 @@
 /// this gonna be a messy file, dw about it
 use parking_lot::Mutex;
 use serde::Deserialize;
-use std::sync::Arc;
+use std::{collections::HashMap, sync::Arc};
 
 use axum::{
     extract::{
@@ -22,7 +22,7 @@ use tokio::sync::broadcast;
 use crate::{
     config,
     sql::{Timer, SQL},
-    utils::ButtonFunction,
+    utils::{ButtonFunction, EventTypes, Events},
 };
 
 const API_VERSION: &str = "v1";

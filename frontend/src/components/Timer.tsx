@@ -2,8 +2,9 @@ import { useEffect, useRef, useState } from "preact/hooks";
 import { TimerType } from "../main"
 import { Icons } from "./Icons";
 import { ChangeEvent } from "preact/compat";
-import { API } from "./utils";
+import { API, parseTime } from "./utils";
 import { HexColorPicker, HexColorInput } from "powerful-color-picker";
+import { Loading } from "./Loading";
 
 type States = {}
 
@@ -108,6 +109,9 @@ export function Timer(props: TimerProps) {
             <button id={"control-button-P1"} onClick={buttonOnClick} className={"transition-all text-zinc-400 hover:text-zinc-100 rounded-lg bg-gray-800 p-2 cursor-pointer border-1 border-gray-600"}>+1 Min</button>
             <button id={"control-button-P5"} onClick={buttonOnClick} className={"transition-all text-zinc-400 hover:text-zinc-100 rounded-lg bg-gray-800 p-2 cursor-pointer border-1 border-gray-600"}>+5 Min</button>
           </div>
+        </div>
+        <div className={""}>
+          <iframe src={`/${props.uuid}`} className={"rounded-lg ring-gray-700 ring-1"} />
         </div>
       </div>
     </div>
@@ -304,12 +308,36 @@ export function CreateTimerOverlay(props: TimerOverlayProps) {
   )
 }
 
-interface TimerWidgetProps {}
+interface TimerWidgetProps {
+}
 
 export function TimerWidget(props: TimerWidgetProps) {
+  const [states, setState] = useState<TimerStates>({ loading: true, data: null });
+
+  useEffect(() => {
+    fetch(API + `/get_timer?uuid=${location.pathname.replace("/", "")}`).then(async (res) => {
+      if (!res.ok) {
+        console.error(await res.text());
+        return
+      }
+
+      const d = await res.json();
+      setState((prev) => ({ ...prev, data: d[0], loading: false }))
+    })
+  }, [])
+
+
+  if (states.loading) {
+    return (
+      <Loading />
+    )
+  }
+
   return (
-    <div className={"h-screen w-screen"}>
-      <p className={"text-white text-3xl"}>OSMOEAJLKFJSALKÖ</p>
+    <div className={"h-screen w-screen bg-gray-950 flex flex-col items-center"}>
+      <p className={"text-white"}>{states.data?.overtitle}</p>
+      <p className={"text-white text-6xl"}>{parseTime(states.data?.timer)}</p>
+      <p className={"text-white"}>{states.data?.undertitle}</p>
     </div>
   )
 }

@@ -2,6 +2,7 @@ pub mod config;
 pub mod macros;
 pub mod routes;
 pub mod sql;
+pub mod twitch;
 pub mod utils;
 
 use axum::{routing::get, Router};
@@ -26,6 +27,7 @@ async fn main() {
         .layer(cors);
 
     let listener = TcpListener::bind("0.0.0.0:22727").await.unwrap();
+    println!("starting api");
     axum::serve(listener, router.into_make_service())
         .await
         .unwrap();
