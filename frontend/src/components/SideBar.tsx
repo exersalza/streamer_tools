@@ -11,8 +11,8 @@ type States = {
 
 interface Props {
   active: string;
-  setActiveTab: any;
   update: number;
+  setActiveTab: (id: string) => void;
 }
 
 export function SideBar(props: Props) {
@@ -37,7 +37,7 @@ export function SideBar(props: Props) {
         <div className={"flex flex-col"}>
 
           <button
-            className={`cursor-pointer rounded transition-all h-8 ${props.active === "dashboard" ? "bg-gray-700 hover:bg-gray-600" : "bg-gray-800 hover:bg-gray-700"}`}>
+            className={`cursor-pointer rounded transition-all h-8 ${props.active === "dashboard" ? "bg-gray-700 hover:bg-gray-600" : "bg-gray-800 hover:bg-gray-700"} border-1 border-gray-700`} onClick={() => {props.setActiveTab("dashboard")}}>
             <p className={"text-zinc-100 flex gap-2 place-items-center px-1"}>{Icons.dashboard} Dashboard</p>
           </button>
         </div>
@@ -46,7 +46,7 @@ export function SideBar(props: Props) {
       <div className={"flex flex-col gap-2"}>
         <p className={"text-zinc-100 text-xl font-semibold"}>Timer</p>
         {state?.timer.map((timer) => {
-          return <TimerButton data={timer} active={state.current_view_timer} />
+          return <TimerButton data={timer} active={state.current_view_timer} setActiveTimer={props.setActiveTab}/>
         })}
       </div>
     </div>

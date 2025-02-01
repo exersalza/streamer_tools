@@ -22,6 +22,7 @@ use tokio::sync::broadcast;
 use crate::{
     config,
     sql::{Timer, SQL},
+    utils::ButtonFunction,
 };
 
 const API_VERSION: &str = "v1";
@@ -29,6 +30,11 @@ const API_VERSION: &str = "v1";
 #[derive(Deserialize, Clone, Debug)]
 pub struct FetchTimer {
     uuid: String,
+}
+
+#[derive(Deserialize, Clone, Debug)]
+pub struct ButtonPressed {
+    function: ButtonFunction,
 }
 
 #[derive(Clone)]
@@ -81,8 +87,17 @@ async fn post_create_timer(Json(payload): Json<Timer>) -> impl IntoResponse {
     (StatusCode::INTERNAL_SERVER_ERROR, "broke")
 }
 
+async fn post_button_pressed(Json(payload): Json<ButtonPressed>) -> impl IntoResponse {
+    dbg!(payload);
+    "cool"
+}
+
 async fn post_update_timer(Json(payload): Json<Timer>) -> impl IntoResponse {
     ""
+}
+
+async fn get_timer_ids() -> impl IntoResponse {
+    serde_json::to_string(&SQL.get_timer_ids().await.unwrap()).unwrap()
 }
 
 async fn ws_stuff(ws: WebSocketUpgrade, State(state): State<RouteStates>) -> Response {
@@ -94,8 +109,10 @@ pub fn create_routes() -> Router {
         .route(&pre("/get_twitch_username"), get(get_twitch_username))
         .route(&pre("/get_all_timers"), get(get_all_timers))
         .route(&pre("/get_timer"), get(get_timer))
+        .route(&pre("/get_timer_names"), get(get_timer_ids))
         .route(&pre("/post_create_timer"), post(post_create_timer))
         .route(&pre("/post_update_timer"), post(post_update_timer))
+        .route(&pre("/post_button_pressed"), post(post_button_pressed))
         .route(&pre("/ws"), get(ws_stuff))
         .with_state(RouteStates::default())
 }

@@ -5,8 +5,9 @@ import { SideBar } from './components/SideBar'
 import { useEffect, useState } from 'preact/hooks'
 import { Icons } from './components/Icons'
 import { Dashboard } from './components/Dashboard'
-import { CreateTimerOverlay } from './components/Timer'
+import { CreateTimerOverlay, Timer, TimerWidget } from './components/Timer'
 import { Settings } from './components/Settings'
+import { API } from './components/utils'
 
 type States = {
   connected: boolean,
@@ -18,6 +19,8 @@ export type TimerType = {
   id: string,
   name: string,
   timer: number,
+  color: string,
+  main: boolean,
   increase_times: {
     follow: number | undefined,
     sub_t1: number | undefined,
@@ -35,32 +38,63 @@ function App() {
   const [states, setStates] = useState<States>({ connected: false, showSettings: false, showCreateTimerOverlay: false });
   const [activeTab, setActiveTab] = useState("dashboard");
   const [update, setUpdate] = useState(0);
+  const [timerIds, setTimerIds] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => { }, [update])
 
   useEffect(() => {
-    console.log("update")
-  }, [update])
+    fetch(API + "/get_timer_names").then(async (res) => {
+      if (!res.ok) {
+        console.error(await res.text());
+        return
+      }
 
+      let d = await res.json();
+      setTimerIds(d);
+      setLoading(false);
+    })
+  }, [])
+
+  const setActiveTimer = (id: string) => setActiveTab(id);
+
+  if (loading) {
+    return (
+      <div>
+
+      </div>
+    )
+  }
+
+
+  console.log(timerIds.includes(location.pathname))
   return (
-    <div className={"bg-gray-950 h-screen flex flex-col"}>
-      <Header connected={states.connected} />
-      <Settings hidden={!states.showSettings} />
-      <CreateTimerOverlay hidden={!states.showCreateTimerOverlay} hideWindow={() => {
-        setStates((prev) => ({ ...prev, showCreateTimerOverlay: false }))
-      }} update={setUpdate} />
+    <div>
+      {
+        timerIds.includes(location.pathname) ?
+          <TimerWidget /> :
+          <div className={"bg-gray-950 h-screen flex flex-col"}>
+            <Header connected={states.connected} />
+            <Settings hidden={!states.showSettings} />
+            <CreateTimerOverlay hidden={!states.showCreateTimerOverlay} hideWindow={() => {
+              setStates((prev) => ({ ...prev, showCreateTimerOverlay: false }))
+            }} update={setUpdate} />
 
-      <div className={"h-full flex"}>
-        <SideBar active={activeTab} setActiveTab={setActiveTab} update={update} />
-        <div className={"w-full"}>
-          {
-            activeTab === "dashboard" ? <Dashboard update={update} openTimerOverlay={() => {
-              setStates((prev) => ({ ...prev, showCreateTimerOverlay: !prev.showCreateTimerOverlay }))
-            }} /> : ""
-          }
-        </div>
-      </div>
-      <div className={"absolute flex h-screen w-screen justify-center items-end pointer-events-none"}>
-        <a href={"https://github.com/exersalza/streamer_tools"} target={"_blank"} className={"pointer-events-auto text-gray-600 hover:text-gray-500 transition-colors text-sm flex place-items-center gap-1 font-semibold select-none"}>Made with <span className={"text-red-500/60"}>{Icons.heart_with_auto_fill}</span> by exersalza</a>
-      </div>
+            <div className={"h-full flex"}>
+              <SideBar active={activeTab} setActiveTab={setActiveTimer} update={update} />
+              <div className={"w-full"}>
+                {
+                  activeTab === "dashboard" ? <Dashboard update={update} openTimerOverlay={() => {
+                    setStates((prev) => ({ ...prev, showCreateTimerOverlay: !prev.showCreateTimerOverlay }))
+                  }} setActiveTimer={setActiveTimer} /> : <Timer uuid={activeTab} />
+                }
+              </div>
+            </div>
+            <div className={"absolute flex h-screen w-screen justify-center items-end pointer-events-none"}>
+              <a href={"https://github.com/exersalza/streamer_tools"} target={"_blank"} className={"pointer-events-auto text-gray-600 hover:text-gray-500 transition-colors text-sm flex place-items-center gap-1 font-semibold select-none"}>Made with <span >{Icons.beer}</span> by exersalza</a>
+            </div>
+          </div>
+      }
     </div>
   )
 }

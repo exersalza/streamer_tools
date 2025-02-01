@@ -3,7 +3,6 @@ use std::{str::FromStr, sync::Arc};
 use anyhow::anyhow;
 use lazy_static::lazy_static;
 use parking_lot::Mutex;
-use reqwest::header::Keys;
 use serde::{Deserialize, Serialize};
 use sqlx::{Executor, Sqlite, SqlitePool};
 use uuid::Uuid;
@@ -69,7 +68,7 @@ impl Sql {
 
         let mut ret = vec![];
 
-        // what a mess, optimize later
+        // what a mess, optimize later, frick this function
         res.iter().for_each(|item| {
             ret.push(Timer {
                 id: Uuid::from_str(&item.id).unwrap_or(Uuid::default()),
@@ -171,5 +170,12 @@ impl Sql {
             id
         ).execute(&self.pool).await?;
         Ok(())
+    }
+
+    pub async fn get_timer_ids(&self) -> anyhow::Result<Vec<String>> {
+        let res = sqlx::query!("select id from timer").fetch_all(&self.pool).await?;
+        let ret = res.iter().map(|value| value.id.clone()).collect::<Vec<String>>();
+
+        Ok(ret)
     }
 }

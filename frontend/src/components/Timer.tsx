@@ -1,4 +1,4 @@
-import { useRef, useState } from "preact/hooks";
+import { useEffect, useRef, useState } from "preact/hooks";
 import { TimerType } from "../main"
 import { Icons } from "./Icons";
 import { ChangeEvent } from "preact/compat";
@@ -10,31 +10,106 @@ type States = {}
 interface TimerButtonProps {
   data: TimerType
   active: string
+  setActiveTimer: (timer: string) => void
 }
-
 
 export function TimerButton(props: TimerButtonProps) {
   const [state, setState] = useState<States>({});
 
+  const onClickHandler = (e: MouseEvent) => {
+    props.setActiveTimer(props.data.id)
+  }
+
   return (
     <button
       key={props.data.id}
-      className={`cursor-pointer rounded transition-all h-8 ${props.active === props.data.id ? "bg-gray-700 hover:bg-gray-600" : "bg-gray-800 hover:bg-gray-700"} min-w-40`}>
-      <p className={"text-zinc-100 flex gap-2 px-1"}>{Icons.clock} {props.data.name}</p>
+      className={`cursor-pointer select-none rounded transition-all h-8 ${props.active === props.data.id ? "bg-gray-800 hover:bg-gray-600" : "bg-gray-800 hover:bg-gray-700"} min-w-40 border-1 border-gray-700`}
+      onClick={onClickHandler}>
+      <p className={"text-zinc-100 flex gap-2 px-1"}><span style={{
+        color: props.data.color !== "#000000" ? props.data.color : "var(--color-zinc-100)"
+      }}>{Icons.clock}</span> {props.data.name}</p>
     </button>
   )
 }
 
 
 interface TimerProps {
-  name: string,
   uuid: string,
 }
 
+type TimerStates = {
+  loading: boolean,
+  data: TimerType | null
+}
+
 export function Timer(props: TimerProps) {
+  const [state, setState] = useState<TimerStates>({ loading: true, data: null });
+
+  useEffect(() => {
+    setState(() => ({ loading: true, data: null }));
+
+    fetch(API + `/get_timer?uuid=${props.uuid}`).then(async (res) => {
+      if (!res.ok) {
+        console.error(await res.text());
+        return
+      }
+
+      const data = await res.json();
+      setState(() => ({ loading: false, data: data[0] }));
+    })
+  }, [props.uuid])
+
+  const buttonOnClick = (e: MouseEvent) => {
+    const targetId = (e.target as HTMLButtonElement).id.split("-")[2]
+
+    fetch(API + "/post_button_pressed", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        function: targetId
+      })
+    }).then(async (res) => {
+      if (!res.ok) {
+        console.error(await res.text())
+        return
+      }
+    })
+  }
+
+  if (state.loading) {
+    return (
+      <div className={"h-full w-full p-2 text-zinc-100"}>
+        <div className={"flex place-items-center gap-2"}>
+          <p>Loading</p>
+          {Icons.loading}
+        </div>
+      </div>
+    )
+  }
+
   return (
-    <div className={"h-full w-full"}>
-      <p>Timer {props.name}</p>
+    <div className={"h-full w-full text-zinc-100 p-2"}>
+      <p className={"font-bold text-2xl"}>{state.data?.name}</p>
+      <p className={"font-semibold text-zinc-400"}>Uuid {props.uuid}</p>
+      <div className={"flex flex-col gap-4 mt-8"}>
+        <div>
+          <p className={"text-zinc-100 font-semibold text-xl select-none"}>Control elements</p>
+          <div className={"flex gap-2 "}>
+            <button id={"control-button-M5"} onClick={buttonOnClick} className={"transition-all text-zinc-400 hover:text-zinc-100 rounded-lg bg-gray-800 p-2 cursor-pointer border-1 border-gray-700"}>-5 Min</button>
+            <button id={"control-button-M1"} onClick={buttonOnClick} className={"transition-all  text-zinc-400 hover:text-zinc-100 rounded-lg bg-gray-800 p-2 cursor-pointer border-1 border-gray-600"}>-1 Min</button>
+
+            <button id={"control-button-Stop"} onClick={buttonOnClick} className={"transition-all text-zinc-400 rounded-lg bg-gray-800 p-2 cursor-pointer border-1 border-gray-600 hover:text-red-500"}>{Icons.stop}</button>
+
+            <button id={"control-button-Play"} onClick={buttonOnClick} className={"transition-all text-zinc-400 rounded-lg bg-gray-800 p-2 cursor-pointer border-1 border-gray-600 hover:text-green-500"}>{Icons.play}</button>
+            <button id={"control-button-Pause"} onClick={buttonOnClick} className={"transition-all text-zinc-400 hover:text-zinc-100 transition-all rounded-lg bg-gray-800 p-2 cursor-pointer border-1 border-gray-600 "}>{Icons.pombear}</button>
+
+            <button id={"control-button-P1"} onClick={buttonOnClick} className={"transition-all text-zinc-400 hover:text-zinc-100 rounded-lg bg-gray-800 p-2 cursor-pointer border-1 border-gray-600"}>+1 Min</button>
+            <button id={"control-button-P5"} onClick={buttonOnClick} className={"transition-all text-zinc-400 hover:text-zinc-100 rounded-lg bg-gray-800 p-2 cursor-pointer border-1 border-gray-600"}>+5 Min</button>
+          </div>
+        </div>
+      </div>
     </div>
   )
 }
@@ -46,25 +121,27 @@ interface TimerOverlayProps {
   update: (prev: number) => void
 }
 
+const OVERLAY_STATES_DEFAULT =
+{
+  main: false,
+  is_active: false,
+  color: "#000000",
+  hour: 0,
+  minute: 0,
+  second: 0,
+  follow: 0,
+  sub_t1: 0,
+  sub_t2: 0,
+  sub_t3: 0,
+  bits_each_n: 0,
+  bits_n: 0,
+  dono_each_n: 0,
+  dono_n: 0,
+};
+
+
 export function CreateTimerOverlay(props: TimerOverlayProps) {
-  const [values, setValues] = useState(
-    {
-      main: false,
-      is_active: false,
-      color: "#000000",
-      hour: 0,
-      minute: 0,
-      second: 0,
-      follow: 0,
-      sub_t1: 0,
-      sub_t2: 0,
-      sub_t3: 0,
-      bits_each_n: 0,
-      bits_n: 0,
-      dono_each_n: 0,
-      dono_n: 0,
-    },
-  );
+  const [values, setValues] = useState(OVERLAY_STATES_DEFAULT);
 
   const [showColorPick, setShowColorPick] = useState(false);
   const [color, setColor] = useState("#aabbcc");
@@ -122,6 +199,11 @@ export function CreateTimerOverlay(props: TimerOverlayProps) {
     };
   }
 
+  useEffect(() => {
+    if (!props.hidden) {
+    }
+  }, [props.hidden])
+
   function createTimer() {
     fetch(API + "/post_create_timer", {
       method: "POST",
@@ -150,6 +232,9 @@ export function CreateTimerOverlay(props: TimerOverlayProps) {
       if (!res.ok) console.log(await res.text());
       props.update(Math.random());
       props.hideWindow();
+      setValues(OVERLAY_STATES_DEFAULT);
+      name.current.value = ""; // SHUT THE FUCK UP LSP
+      setColor("#000000")
     });
   }
 
@@ -194,10 +279,10 @@ export function CreateTimerOverlay(props: TimerOverlayProps) {
               <input type="checkbox" id={"timer-creation-is_active"} checked={values.is_active} onChange={() => { setValues((prev) => ({ ...prev, is_active: !prev.is_active })) }} />
               <label for={"timer-creation-is_active"} className={"text-zinc-100 select-none"}>Is timer active</label>
             </div>
-            <div className={`absolute -translate-y-50 ${showColorPick ? "" : "hidden"} p-1 rounded-lg bg-gray-700 flex flex-col gap-2`}>
+            <div className={`absolute -translate-y-50 ${showColorPick ? "" : "hidden"} p-1 rounded-lg bg-gray-800 flex flex-col gap-2`}>
               <HexColorPicker color={color} onChange={setColor} />
               <input className={"px-1 ring-1 ring-zinc-500 rounded text-zinc-100"} value={color} onInput={changeColor} />
-              <button className={"text-zinc-100 cursor-pointer hover:bg-gray-600 rounded"} onClick={() => {setShowColorPick(false)}}>Save</button>
+              <button className={"text-zinc-100 cursor-pointer hover:bg-gray-600 rounded"} onClick={() => { setShowColorPick(false) }}>Save</button>
             </div>
             <button className={"text-zinc-100 cursor-pointer"} onClick={() => { setShowColorPick((prev) => !prev) }}>Spawn color picker</button>
           </div>
@@ -205,16 +290,26 @@ export function CreateTimerOverlay(props: TimerOverlayProps) {
         <div className={"flex w-full gap-2 mt-3"}>
           <button
             onClick={createTimer}
-            className={`cursor-pointer text-zinc-100 rounded transition-all h-8 w-full bg-gray-700 hover:bg-gray-600`}>
+            className={`cursor-pointer text-zinc-100 rounded transition-all h-8 w-full bg-gray-800 hover:bg-gray-600`}>
             Create
           </button>
           <button
             onClick={props.hideWindow}
-            className={`cursor-pointer text-zinc-100 rounded transition-all h-8 w-full bg-gray-700 hover:bg-gray-600`}>
+            className={`cursor-pointer text-zinc-100 rounded transition-all h-8 w-full bg-gray-800 hover:bg-gray-600`}>
             Abort
           </button>
         </div>
       </div>
+    </div>
+  )
+}
+
+interface TimerWidgetProps {}
+
+export function TimerWidget(props: TimerWidgetProps) {
+  return (
+    <div className={"h-screen w-screen"}>
+      <p className={"text-white text-3xl"}>OSMOEAJLKFJSALKÖ</p>
     </div>
   )
 }

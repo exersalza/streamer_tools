@@ -9,8 +9,9 @@ type States = {
 }
 
 interface Props {
-  openTimerOverlay: () => void;
   update: number;
+  openTimerOverlay: () => void;
+  setActiveTimer: (timer: string) => void;
 }
 
 
@@ -36,7 +37,7 @@ export function Dashboard(props: Props) {
         <p className={"text-zinc-200 text-lg"}>Buttons (idk what to put here yet)</p>
         <div className={"flex gap-2"}>
           <button
-            className={`rounded transition-all h-8 bg-gray-800 hover:bg-gray-700 min-w-40 cursor-pointer`}>
+            className={`rounded transition-all h-8 bg-gray-800 hover:bg-gray-700 border-1 border-gray-700 min-w-40 cursor-pointer`}>
             <p className={"text-zinc-100 flex gap-2 px-1 place-items-center"} onClick={props.openTimerOverlay}>{Icons.circle_add} Create timer</p>
           </button>
 
@@ -47,7 +48,7 @@ export function Dashboard(props: Props) {
         <p className={"text-zinc-200 text-lg"}>All timers</p>
         <div className={"flex gap-2 flex-wrap"}>
           {state.timer.map((timer) => {
-            return <TimerButton data={timer} active={""} />
+            return <TimerButton data={timer} active={""} setActiveTimer={props.setActiveTimer}/>
           })}
         </div>
       </div>

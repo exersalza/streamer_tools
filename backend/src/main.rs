@@ -1,7 +1,8 @@
 pub mod config;
 pub mod macros;
-mod routes;
+pub mod routes;
 pub mod sql;
+pub mod utils;
 
 use axum::{routing::get, Router};
 use tokio::net::TcpListener;
