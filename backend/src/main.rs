@@ -1,5 +1,6 @@
 pub mod config;
 pub mod macros;
+pub mod oauth;
 pub mod routes;
 pub mod sql;
 pub mod twitch;
@@ -8,6 +9,7 @@ pub mod utils;
 use axum::{routing::get, Router};
 use tokio::net::TcpListener;
 use tower_http::cors::{Any, CorsLayer};
+use twitch::Twitch;
 
 async fn root() -> String {
     "hello".to_string()
@@ -25,6 +27,8 @@ async fn main() {
         .route("/", get(root))
         .merge(routes::create_routes())
         .layer(cors);
+
+    Twitch::new().await;
 
     let listener = TcpListener::bind("0.0.0.0:22727").await.unwrap();
     println!("starting api");

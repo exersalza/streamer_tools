@@ -92,7 +92,7 @@ function App() {
               </div>
             </div>
             <div className={"absolute flex h-screen w-screen justify-center items-end pointer-events-none"}>
-              <a href={"https://github.com/exersalza/streamer_tools"} target={"_blank"} className={"pointer-events-auto text-gray-600 hover:text-gray-500 transition-colors text-sm flex place-items-center gap-1 font-semibold select-none"}>Made with <span >{Icons.beer}</span> by exersalza</a>
+              <a href={"https://github.com/exersalza/streamer_tools"} target={"_blank"} className={"pointer-events-auto text-gray-600 hover:text-gray-500 transition-colors text-sm flex place-items-center gap-1 font-semibold select-none"}>Made with <span title={"Its beer"}>{Icons.beer}</span> by exersalza</a>
             </div>
           </div>
       }

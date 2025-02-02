@@ -36,6 +36,8 @@ pub struct InnerConfig {
 #[derive(Deserialize, Clone, Debug)]
 pub struct Twitch {
     pub username: String,
+    pub client_id: String,
+    pub client_secret: String,
 }
 
 #[derive(Deserialize, Clone, Debug)]
@@ -140,5 +142,15 @@ impl Config {
         loop {
             interval.tick().await;
         }
+    }
+
+    async fn save_to_file(self) -> anyhow::Result<()> {
+        let mut handle = tokio::fs::OpenOptions::new()
+            .write(true)
+            .truncate(true)
+            .open(self.path)
+            .await?;
+
+        Ok(())
     }
 }
