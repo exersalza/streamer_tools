@@ -76,7 +76,7 @@ function App() {
           <TimerWidget /> :
           <div className={"bg-gray-950 h-screen flex flex-col"}>
             <Header connected={states.connected} />
-            <Settings hidden={!states.showSettings} />
+            <Settings hidden={states.showSettings} />
             <CreateTimerOverlay hidden={!states.showCreateTimerOverlay} hideWindow={() => {
               setStates((prev) => ({ ...prev, showCreateTimerOverlay: false }))
             }} update={setUpdate} />

@@ -17,6 +17,9 @@ export function Settings(props: Props) {
             </form>
           </fieldset>
         </div>
+        <div>
+          <a href={ "https://id.twitch.tv/oauth2/authorize?response_type=code&client_id=2i56tfmomtm0a3m3m5w83boazvkaks&redirect_uri=http://localhost:22727/api/v1/twitch_auth&scope=channel%3Aread%3Asubscriptions&" }>Connect with Twitch</a>
+        </div>
       </div>
     </div>
   )
