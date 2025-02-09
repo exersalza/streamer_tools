@@ -182,4 +182,19 @@ impl Sql {
 
         Ok(ret)
     }
+
+    pub async fn get_twitch_token(&self) -> anyhow::Result<bool> {
+        let token = sqlx::query!("select user_token from twitch_data where id = 1;").fetch_one(&self.pool).await?;
+
+        Ok(token.user_token.is_some())
+    }
+
+    pub async fn insert_twitch_token(&self, token: String, refresh: String) -> anyhow::Result<()> {
+        sqlx::query!("INSERT INTO twitch_data (id, user_token, user_refresh)
+VALUES (?, ?, ?)
+ON CONFLICT (id)
+DO UPDATE SET user_token = ?, user_refresh = ?;",1, token, token, refresh, refresh).execute(&self.pool).await?;
+
+        Ok(())
+    }
 }

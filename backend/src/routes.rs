@@ -1,7 +1,10 @@
+use futures::TryFutureExt;
 /// this gonna be a messy file, dw about it
 use parking_lot::Mutex;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
+use sqlx::error;
 use std::{collections::HashMap, sync::Arc};
+use tower::util::Optional;
 
 use axum::{
     extract::{
@@ -9,7 +12,7 @@ use axum::{
         Query, State,
     },
     http::StatusCode,
-    response::{IntoResponse, Response},
+    response::{Html, IntoResponse, Redirect, Response},
     routing::{get, post},
     Json, Router,
 };
@@ -104,6 +107,76 @@ async fn ws_stuff(ws: WebSocketUpgrade, State(state): State<RouteStates>) -> Res
     ws.on_upgrade(|socket| handle_socket(socket, state))
 }
 
+#[derive(Deserialize, Debug, Clone, Serialize)]
+struct TwitchAuth {
+    code: Option<String>,
+    scope: Option<String>,
+    error: Option<String>,
+    error_message: Option<String>,
+}
+
+fn to_x_www_thingies_fuck_of(input: Vec<(&str, String)>) -> String {
+    let mut ret = String::new();
+
+    input.iter().for_each(|item| {
+        ret += &format!("{}={}&", item.0, item.1);
+    });
+
+    ret.remove(ret.len() - 1);
+    ret
+}
+
+struct AuthTokenResponseOk {}
+
+struct AuthTokenResponseNotOk {}
+
+async fn twitch_auth(Query(query): Query<TwitchAuth>) -> impl IntoResponse {
+    let token = query.code;
+    let scope = query.scope;
+
+    if let Some(error) = query.error {
+        eprintln!("{} {}", error, query.error_message.unwrap_or("".into()));
+        return Redirect::permanent("/twitch_invalid");
+    }
+
+    let client = reqwest::Client::new();
+    let twitch = config!().twitch.clone();
+
+    let fjdaslkjfkls = vec![
+        ("client_id", twitch.client_id.clone()),
+        ("client_secret", twitch.client_secret.clone()),
+        ("code", token.unwrap()),
+        ("grant_type", "authorization_code".to_string()),
+        ("redirect_uri", "http://localhost:22727/".to_string()),
+    ];
+
+    let fdjasklfsjad: HashMap<&str, String> = HashMap::from_iter(fjdaslkjfkls);
+
+    let res = client
+        .post("https://id.twitch.tv/oauth2/token")
+        .form(&fdjasklfsjad)
+        .send()
+        .await;
+
+    let f = &res.unwrap().text().await.unwrap_or("{}".to_string());
+    dbg!(&f);
+    //let ff = serde_json::from_str(f);
+    //
+
+    //let _ = SQL.insert_twitch_token(token.unwrap_or("".into())).await;
+    Redirect::permanent("/")
+}
+
+async fn twitch_invalid() -> impl IntoResponse {
+    Html(
+        r#"You declined the permissions <img src="https://cdn.7tv.app/emote/01JG36RF6KEFA8M22X4J0SKR9J/1x.avif" /><a href="/">back home</a>"#,
+    )
+}
+
+async fn connected_to_twitch() -> impl IntoResponse {
+    SQL.get_twitch_token().await.unwrap_or(false).to_string()
+}
+
 pub fn create_routes() -> Router {
     Router::new()
         .route(&pre("/get_twitch_username"), get(get_twitch_username))
@@ -113,6 +186,9 @@ pub fn create_routes() -> Router {
         .route(&pre("/post_create_timer"), post(post_create_timer))
         .route(&pre("/post_update_timer"), post(post_update_timer))
         .route(&pre("/post_button_pressed"), post(post_button_pressed))
+        .route(&pre("/twitch_auth"), get(twitch_auth))
+        .route(&pre("/is_connected_to_twitch"), get(connected_to_twitch))
+        .route("/twitch_invalid", get(twitch_invalid))
         .route(&pre("/ws"), get(ws_stuff))
         .with_state(RouteStates::default())
 }
