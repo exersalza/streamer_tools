@@ -7,6 +7,8 @@ use serde::{Deserialize, Serialize};
 use sqlx::{Executor, Sqlite, SqlitePool};
 use uuid::Uuid;
 
+use crate::routes::AuthTokenResponseOk;
+
 lazy_static! {
     pub static ref SQL: Sql = Sql::new();
 }
@@ -195,6 +197,10 @@ VALUES (?, ?, ?)
 ON CONFLICT (id)
 DO UPDATE SET user_token = ?, user_refresh = ?;",1, token, token, refresh, refresh).execute(&self.pool).await?;
 
+        Ok(())
+    }
+
+    pub async fn update_user_access_token(&self, auth_response: AuthTokenResponseOk) -> anyhow::Result<()> {
         Ok(())
     }
 }

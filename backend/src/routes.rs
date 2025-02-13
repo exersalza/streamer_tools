@@ -126,7 +126,14 @@ fn to_x_www_thingies_fuck_of(input: Vec<(&str, String)>) -> String {
     ret
 }
 
-struct AuthTokenResponseOk {}
+#[derive(Deserialize, Debug)]
+pub struct AuthTokenResponseOk {
+    pub access_token: String,
+    pub expires_in: i32,
+    pub refresh_token: String,
+    pub scope: Vec<String>,
+    pub token_type: String,
+}
 
 struct AuthTokenResponseNotOk {}
 
@@ -159,8 +166,14 @@ async fn twitch_auth(Query(query): Query<TwitchAuth>) -> impl IntoResponse {
         .await;
 
     let f = &res.unwrap().text().await.unwrap_or("{}".to_string());
-    dbg!(&f);
-    //let ff = serde_json::from_str(f);
+    let ff: AuthTokenResponseOk = serde_json::from_str(f).unwrap();
+    dbg!(&ff);
+
+    match SQL.update_user_access_token(ff).await {
+        Ok(e) => (),
+        Err(e) => (),
+    }
+
     //
 
     //let _ = SQL.insert_twitch_token(token.unwrap_or("".into())).await;
