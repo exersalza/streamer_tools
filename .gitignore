@@ -7,3 +7,4 @@ config.toml
 .sqlx/
 *.sqlite
 package-lock.json
+.DS_Store
