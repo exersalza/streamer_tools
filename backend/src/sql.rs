@@ -200,7 +200,8 @@ DO UPDATE SET user_token = ?, user_refresh = ?;",1, token, token, refresh, refre
         Ok(())
     }
 
-    pub async fn update_user_access_token(&self, auth_response: AuthTokenResponseOk) -> anyhow::Result<()> {
+    pub async fn update_user_access_token(&self, res: AuthTokenResponseOk) -> anyhow::Result<()> {
+        
         Ok(())
     }
 }

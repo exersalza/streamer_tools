@@ -6,3 +6,4 @@ tailwind.css
 config.toml
 .sqlx/
 *.sqlite
+package-lock.json

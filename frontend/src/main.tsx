@@ -37,7 +37,7 @@ export type TimerType = {
 
 
 function App() {
-  const [states, setStates] = useState<States>({ connected: false, showSettings: false, showCreateTimerOverlay: false });
+  const [states, setStates] = useState<States>({ connected: false, showSettings: true, showCreateTimerOverlay: false });
   const [activeTab, setActiveTab] = useState("dashboard");
   const [update, setUpdate] = useState(0);
   const [timerIds, setTimerIds] = useState([]);
@@ -76,7 +76,7 @@ function App() {
           <TimerWidget /> :
           <div className={"bg-gray-950 h-screen flex flex-col"}>
             <Header connected={states.connected} />
-            <Settings hidden={states.showSettings} />
+            <Settings hidden={!states.showSettings} />
             <CreateTimerOverlay hidden={!states.showCreateTimerOverlay} hideWindow={() => {
               setStates((prev) => ({ ...prev, showCreateTimerOverlay: false }))
             }} update={setUpdate} />
