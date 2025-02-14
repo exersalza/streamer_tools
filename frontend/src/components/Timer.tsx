@@ -298,6 +298,8 @@ export function CreateTimerOverlay(props: TimerOverlayProps) {
         timer: values.hour * 60 * 60 + values.minute * 60 + values.second,
         color: color,
         is_active: values.is_active,
+        overtitle: "",
+        undertitle: "",
         increase_times: {
           follow: values.follow,
           sub_t1: values.sub_t1,
