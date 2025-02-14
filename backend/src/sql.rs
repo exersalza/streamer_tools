@@ -157,10 +157,12 @@ impl Sql {
         let id = payload.id.to_string();
 
         let _ = sqlx::query!(
-            r#"update timer set name = ?, time = ?, main = ? where id = ?"#,
+            r#"update timer set name = ?, time = ?, main = ?, overtitle = ?, undertitle = ? where id = ?"#,
             payload.name,
             payload.timer,
             payload.main,
+            payload.overtitle,
+            payload.undertitle,
             id
         ).execute(&self.pool).await?;
 
@@ -203,5 +205,11 @@ DO UPDATE SET user_token = ?, user_refresh = ?;",1, token, token, refresh, refre
     pub async fn update_user_access_token(&self, res: AuthTokenResponseOk) -> anyhow::Result<()> {
         
         Ok(())
+    }
+
+    pub async fn get_refresh_token(&self) -> anyhow::Result<String> {
+        let ret = sqlx::query!("select user_refresh from twitch_data where id = 1").fetch_one(&self.pool).await?;
+
+        Ok(ret.user_refresh.unwrap_or("".to_string()))
     }
 }

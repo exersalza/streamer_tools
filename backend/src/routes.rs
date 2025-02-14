@@ -137,6 +137,40 @@ pub struct AuthTokenResponseOk {
 
 struct AuthTokenResponseNotOk {}
 
+async fn refresh_twitch_token() {
+    let client = reqwest::Client::new();
+    let twitch = config!().twitch.clone();
+
+    let token = match SQL.get_refresh_token().await {
+        Ok(toki) => toki,
+        Err(e) => panic!("{e} erm"),
+    };
+
+    // TODO: refactor bc DRY and stuff
+    let fjdaslkjfkls = vec![
+        ("client_id", twitch.client_id.clone()),
+        ("client_secret", twitch.client_secret.clone()),
+        ("refresh_token", token),
+        ("grant_type", "refresh_token".to_string()),
+    ];
+
+    let fdjasklfsjad: HashMap<&str, String> = HashMap::from_iter(fjdaslkjfkls);
+
+    let res = client
+        .post("https://id.twitch.tv/oauth2/token")
+        .form(&fdjasklfsjad)
+        .send()
+        .await;
+
+    let f = &res.unwrap().text().await.unwrap_or("{}".to_string());
+    let ff: AuthTokenResponseOk = serde_json::from_str(f).unwrap();
+
+    match SQL.update_user_access_token(ff).await {
+        Ok(e) => (),
+        Err(e) => (),
+    }
+}
+
 async fn twitch_auth(Query(query): Query<TwitchAuth>) -> impl IntoResponse {
     let token = query.code;
     let scope = query.scope;
@@ -174,9 +208,6 @@ async fn twitch_auth(Query(query): Query<TwitchAuth>) -> impl IntoResponse {
         Err(e) => (),
     }
 
-    //
-
-    //let _ = SQL.insert_twitch_token(token.unwrap_or("".into())).await;
     Redirect::permanent("/")
 }
 
