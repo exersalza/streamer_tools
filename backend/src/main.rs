@@ -28,7 +28,7 @@ async fn main() {
         .merge(routes::create_routes())
         .layer(cors);
 
-    Twitch::new().await;
+    tokio::spawn(Twitch::new());
 
     let listener = TcpListener::bind("0.0.0.0:22727").await.unwrap();
     println!("starting api");
