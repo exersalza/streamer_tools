@@ -187,10 +187,14 @@ impl Sql {
         Ok(ret)
     }
 
-    pub async fn get_twitch_token(&self) -> anyhow::Result<bool> {
+    pub async fn get_user_token_exist(&self) -> anyhow::Result<bool> {
+        Ok(self.get_twitch_user_token().await?.is_some())
+    }
+
+    pub async fn get_twitch_user_token(&self) -> anyhow::Result<Option<String>> {
         let token = sqlx::query!("select user_token from twitch_data where id = 1;").fetch_one(&self.pool).await?;
 
-        Ok(token.user_token.is_some())
+        Ok(token.user_token)
     }
 
     pub async fn insert_twitch_token(&self, token: String, refresh: String) -> anyhow::Result<()> {

@@ -218,7 +218,10 @@ async fn twitch_invalid() -> impl IntoResponse {
 }
 
 async fn connected_to_twitch() -> impl IntoResponse {
-    SQL.get_twitch_token().await.unwrap_or(false).to_string()
+    SQL.get_user_token_exist()
+        .await
+        .unwrap_or(false)
+        .to_string()
 }
 
 pub fn create_routes() -> Router {
