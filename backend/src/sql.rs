@@ -1,6 +1,7 @@
 use std::{str::FromStr, sync::Arc};
 
 use anyhow::anyhow;
+use chrono::{DateTime, Utc};
 use lazy_static::lazy_static;
 use parking_lot::Mutex;
 use serde::{Deserialize, Serialize};
@@ -56,6 +57,8 @@ pub struct StrippedTimer {
 }
 
 
+// TODO:
+//  - Add implementation for recovery/first start of the prgram. eg. add migration scripts 
 #[allow(clippy::new_without_default)]
 impl Sql {
     pub fn new() -> Self {
@@ -201,7 +204,7 @@ impl Sql {
         sqlx::query!("INSERT INTO twitch_data (id, user_token, user_refresh)
 VALUES (?, ?, ?)
 ON CONFLICT (id)
-DO UPDATE SET user_token = ?, user_refresh = ?;",1, token, token, refresh, refresh).execute(&self.pool).await?;
+DO UPDATE SET user_token = ?, user_refresh = ?;",1, token, refresh, token, refresh).execute(&self.pool).await?;
 
         Ok(())
     }
@@ -215,5 +218,27 @@ DO UPDATE SET user_token = ?, user_refresh = ?;",1, token, token, refresh, refre
         let ret = sqlx::query!("select user_refresh from twitch_data where id = 1").fetch_one(&self.pool).await?;
 
         Ok(ret.user_refresh.unwrap_or("".to_string()))
+    }
+
+    /// Gets the OAuth for the bot side related stuff
+    ///
+    /// # Returns
+    /// (token, token_type) -> the token and the type
+    pub async fn get_bot_oauth(&self) -> anyhow::Result<(String, String)> {
+        let ret = sqlx::query!("select token, token_type from _oauth where id=1").fetch_one(&self.pool).await?;
+
+       Ok((ret.token.unwrap(), ret.token_type.unwrap()))
+    }
+
+    pub async fn update_oauth_data(&self, access_token: String, expires_in: DateTime<Utc>, token_type: String) -> anyhow::Result<()> {
+        let time = expires_in.timestamp();
+
+        sqlx::query!("
+INSERT INTO _oauth (id, token, expires_in, token_type)
+VALUES (1, ?, ?, ?)
+ON CONFLICT (id)
+DO UPDATE SET token = ?, expires_in = ?, token_type = ?;
+", access_token, time, token_type, access_token, time, token_type).execute(&self.pool).await?; 
+        Ok(())
     }
 }

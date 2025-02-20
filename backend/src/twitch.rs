@@ -1,5 +1,5 @@
 use core::{fmt, str};
-use std::sync::Arc;
+use std::{any::Any, collections::HashMap, sync::Arc};
 
 use anyhow::Result;
 use futures::{SinkExt, StreamExt};
@@ -12,7 +12,10 @@ use tokio_tungstenite::{
     tungstenite::{client::IntoClientRequest, Message},
 };
 
-use crate::{config::AM, sql::SQL};
+use crate::{
+    config::{self, AM},
+    sql::SQL,
+};
 
 const KEEPALIVE_TIMEOUT: i32 = 10;
 const MSG_LOG_LEN: usize = 256;
@@ -23,6 +26,7 @@ lazy_static! {
     static ref msg_id_log: AM<Vec<String>> = Arc::new(Mutex::new(Vec::with_capacity(MSG_LOG_LEN)));
     static ref current_ws_id: AM<String> = Arc::new(Mutex::new("".to_string()));
     static ref TWITCH_EVENTS: Vec<&'static str> = vec![];
+    pub static ref rew_cl: reqwest::Client = reqwest::Client::new();
 }
 
 pub struct Twitch {}
@@ -58,12 +62,71 @@ struct InitResponse {
     metadata: MetaData,
 }
 
-pub async fn get_user_id<T: fmt::Display>(login: T) -> Result<()> {
-    let token = SQL.get_twitch_user_token();
+#[derive(Deserialize, Debug)]
+struct GetUser {
+    data: Vec<User>,
+}
 
-    let f = reqwest::get(format!("https://api.twitch.tv/helix/users?login={login}"))
+// https://dev.twitch.tv/docs/api/reference/#get-users
+#[derive(Deserialize, Debug)]
+struct User {
+    id: String,
+    login: String,
+    display_name: String,
+    broadcaster_type: String,
+    profile_image_url: String,
+}
+
+pub async fn get_user_id<T: fmt::Display>(login: T) -> Result<()> {
+    let id = crate::config!().twitch.client_id.clone();
+    let (token, _) = SQL.get_bot_oauth().await.unwrap();
+
+    let f = rew_cl
+        .get(format!("https://api.twitch.tv/helix/users?login={login}"))
+        .header("Authorization", format!("Bearer {}", token))
+        .header("Client-ID", id)
+        .send()
         .await?
         .text()
+        .await?;
+
+    dbg!(serde_json::from_str::<GetUser>(&f).unwrap());
+
+    Ok(())
+}
+
+#[derive(Deserialize, Debug)]
+pub struct OAuthRes {
+    pub access_token: String,
+    pub token_type: String,
+    pub expires_in: i64,
+}
+
+pub async fn get_oauth() -> Result<OAuthRes> {
+    let mut fo: HashMap<&str, String> = HashMap::new();
+    let twitch = crate::config!().twitch.clone();
+
+    fo.insert("client_id", twitch.client_id);
+    fo.insert("client_secret", twitch.client_secret);
+    fo.insert("grant_type", "client_credentials".to_string());
+
+    let f = rew_cl
+        .post("https://id.twitch.tv/oauth2/token")
+        .form(&fo)
+        .send()
+        .await?
+        .text()
+        .await?;
+
+    Ok(serde_json::from_str(&f)?)
+}
+
+pub async fn get_and_store_oauth() -> Result<()> {
+    let res = get_oauth().await?;
+
+    let now = chrono::Utc::now();
+    let time = now + chrono::Duration::seconds(res.expires_in);
+    SQL.update_oauth_data(res.access_token, time, res.token_type)
         .await?;
 
     Ok(())
@@ -132,7 +195,7 @@ impl Twitch {
                     match metadata.message_type.as_str() {
                         "session_reconnect" => {}
                         "session_welcome" => {
-                            dbg!(&text);
+                            //dbg!(&text);
                             let session: Session = serde_json::from_str::<MofoginWelcomeThingi>(
                                 str::from_utf8(text.as_bytes()).unwrap(),
                             )
@@ -152,6 +215,7 @@ impl Twitch {
                 }
                 Message::Close(e) => {
                     dbg!("close ws", e);
+                    break;
                 }
                 Message::Ping(e) => {
                     dbg!("send pong", &e);

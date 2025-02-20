@@ -38,7 +38,7 @@ export type TimerType = {
 function App() {
   const [states, setStates] = useState<States>({
     connected: false,
-    showSettings: false,
+    showSettings: true,
     showCreateTimerOverlay: false,
   });
   const [activeTab, setActiveTab] = useState("dashboard");
