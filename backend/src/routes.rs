@@ -25,6 +25,7 @@ use tokio::sync::broadcast;
 use crate::{
     config,
     sql::{Timer, SQL},
+    twitch::{update_user_in_db, User},
     utils::{ButtonFunction, EventTypes, Events},
 };
 
@@ -224,6 +225,30 @@ async fn connected_to_twitch() -> impl IntoResponse {
         .to_string()
 }
 
+async fn get_user() -> impl IntoResponse {
+    match SQL.get_user().await {
+        Ok(v) => serde_json::to_string(&v).unwrap_or("{}".to_string()),
+        Err(e) => e.to_string(),
+    }
+}
+
+#[derive(Deserialize)]
+struct UpdateUser {
+    username: String,
+}
+
+async fn update_user(Json(payload): Json<UpdateUser>) -> impl IntoResponse {
+    if let Err(e) = SQL.update_username(payload.username.clone()).await {
+        return (StatusCode::INTERNAL_SERVER_ERROR, e.to_string());
+    }
+
+    if let Err(e) = update_user_in_db(payload.username).await {
+        return (StatusCode::INTERNAL_SERVER_ERROR, e.to_string());
+    };
+
+    (StatusCode::OK, String::new())
+}
+
 pub fn create_routes() -> Router {
     Router::new()
         .route(&pre("/get_twitch_username"), get(get_twitch_username))
@@ -235,6 +260,8 @@ pub fn create_routes() -> Router {
         .route(&pre("/post_button_pressed"), post(post_button_pressed))
         .route(&pre("/twitch_auth"), get(twitch_auth))
         .route(&pre("/is_connected_to_twitch"), get(connected_to_twitch))
+        .route(&pre("/get_user"), get(get_user))
+        .route(&pre("/update_user"), post(update_user))
         .route("/twitch_invalid", get(twitch_invalid))
         .route(&pre("/ws"), get(ws_stuff))
         .with_state(RouteStates::default())

@@ -5,7 +5,7 @@ use anyhow::Result;
 use futures::{SinkExt, StreamExt};
 use lazy_static::lazy_static;
 use parking_lot::Mutex;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use serde_json::json;
 use tokio_tungstenite::{
     connect_async,
@@ -68,16 +68,16 @@ struct GetUser {
 }
 
 // https://dev.twitch.tv/docs/api/reference/#get-users
-#[derive(Deserialize, Debug)]
-struct User {
-    id: String,
-    login: String,
-    display_name: String,
-    broadcaster_type: String,
-    profile_image_url: String,
+#[derive(Deserialize, Serialize, Debug)]
+pub struct User {
+    pub id: String,
+    pub login: String,
+    pub display_name: String,
+    pub broadcaster_type: String,
+    pub profile_image_url: String,
 }
 
-pub async fn get_user_id<T: fmt::Display>(login: T) -> Result<()> {
+pub async fn update_user_in_db<T: fmt::Display>(login: T) -> Result<()> {
     let id = crate::config!().twitch.client_id.clone();
     let (token, _) = SQL.get_bot_oauth().await.unwrap();
 
@@ -90,7 +90,15 @@ pub async fn get_user_id<T: fmt::Display>(login: T) -> Result<()> {
         .text()
         .await?;
 
-    dbg!(serde_json::from_str::<GetUser>(&f).unwrap());
+    SQL.update_user(
+        serde_json::from_str::<GetUser>(&f)
+            .unwrap()
+            .data
+            .first()
+            .unwrap(),
+    )
+    .await
+    .unwrap();
 
     Ok(())
 }

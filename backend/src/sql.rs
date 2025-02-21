@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use sqlx::{Executor, Sqlite, SqlitePool};
 use uuid::Uuid;
 
-use crate::routes::AuthTokenResponseOk;
+use crate::{routes::AuthTokenResponseOk, sql, twitch::User};
 
 lazy_static! {
     pub static ref SQL: Sql = Sql::new();
@@ -240,5 +240,52 @@ ON CONFLICT (id)
 DO UPDATE SET token = ?, expires_in = ?, token_type = ?;
 ", access_token, time, token_type, access_token, time, token_type).execute(&self.pool).await?; 
         Ok(())
+    }
+
+
+    pub async fn update_user(&self, user: &User) -> anyhow::Result<()> {
+        let f = self.get_user().await?;
+
+        if f.is_some() {
+            sqlx::query!("update user_data set username = ?, display_name = ?, profile_pic = ?, broadcaster_type = ? where id = ? ", user.login, user.display_name, user.profile_image_url, user.broadcaster_type, user.id).execute(&self.pool).await?;
+            return Ok(());
+        }
+
+        sqlx::query!("insert into user_data (id, username, display_name, profile_pic, broadcaster_type) values (?, ?, ?, ?, ?)",user.id, user.login, user.display_name, user.profile_image_url, user.broadcaster_type).execute(&self.pool).await?;
+
+        Ok(())
+    }
+
+    pub async fn update_username(&self, username: String) -> anyhow::Result<()> {
+        let f = self.get_user().await?;
+
+        if f.is_some() {
+            // :tf:
+            // this will surely be ok Clueless
+            sqlx::query!("update user_data set username = ?", username).execute(&self.pool).await?;
+            return Ok(());
+        }
+
+        sqlx::query!("insert into user_data (username) values (?)", username).execute(&self.pool).await?;
+
+        Ok(())
+    }
+
+
+    /// get the user from the db
+    pub async fn get_user(&self) -> anyhow::Result<Option<User>> {
+        // we just hope that there is only one
+        let f = sqlx::query!("select id, username, display_name, profile_pic, broadcaster_type from user_data").fetch_all(&self.pool).await?;
+
+        if let Some(user) = f.last() {
+            return Ok(Some(User {
+                id: user.id.clone().unwrap_or_default().to_string(),
+                login: user.username.clone().unwrap_or_default(),
+                display_name: user.display_name.clone().unwrap_or_default(),
+                broadcaster_type: user.broadcaster_type.clone().unwrap_or_default(),
+                profile_image_url: user.profile_pic.clone().unwrap_or_default(),
+            }))
+        }
+        Ok(None)
     }
 }
