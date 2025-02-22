@@ -6,7 +6,7 @@ use futures::{SinkExt, StreamExt};
 use lazy_static::lazy_static;
 use parking_lot::Mutex;
 use serde::{Deserialize, Serialize};
-use serde_json::json;
+use serde_json::{json, Map};
 use tokio_tungstenite::{
     connect_async,
     tungstenite::{client::IntoClientRequest, Message},
@@ -140,7 +140,42 @@ pub async fn get_and_store_oauth() -> Result<()> {
     Ok(())
 }
 
-fn regit_twitch_events() {}
+#[derive(Serialize, Debug)]
+struct Transport {
+    method: String,
+    session_id: String,
+}
+
+#[derive(Serialize, Debug)]
+struct Condition {
+    user_id: String,
+}
+
+#[derive(Serialize, Debug)]
+struct RegitTwitchEventsPayload {
+    transport: Transport,
+    version: String,
+    condition: Condition,
+}
+
+async fn regit_twitch_events() {
+    let user_id = SQL.get_user().await.unwrap().unwrap().id;
+
+    let mut events = vec![];
+
+    let mut sub = serde_json::Map::new();
+
+    sub.insert("type".to_string(), Value::String(""))
+
+    events.push(sub);
+
+
+    let res = rew_cl
+        .post("https://api.twitch.tv/helix/eventsub/subscriptions")
+        .body(serde_json::to_string(&body).unwrap_or("{}".to_string()))
+        .send()
+        .await;
+}
 
 fn start_message_watchdog() {
     tokio::spawn(async {
@@ -213,8 +248,9 @@ impl Twitch {
 
                             let mut cur_id = current_ws_id.lock();
                             *cur_id = session.id;
+                            drop(cur_id);
 
-                            regit_twitch_events();
+                            tokio::spawn(regit_twitch_events());
                         }
                         "session_keepalive" => {}
                         _ => {}

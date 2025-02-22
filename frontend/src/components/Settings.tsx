@@ -69,7 +69,7 @@ export function Settings(props: Props) {
           </fieldset>
         </div>
         <div className={"flex flex-col gap-1"}>
-          <a className={"bg-purple-500 text-zinc-100 font-semibold p-2 rounded"} href={"https://id.twitch.tv/oauth2/authorize?response_type=code&client_id=2i56tfmomtm0a3m3m5w83boazvkaks&force_verify=true&redirect_uri=http://localhost:22727/api/v1/twitch_auth&scope=channel%3Aread%3Asubscriptions&"}>Connect with Twitch</a>
+          <a className={"bg-purple-500 text-zinc-100 font-semibold p-2 rounded"} href={"https://id.twitch.tv/oauth2/authorize?response_type=code&client_id=2i56tfmomtm0a3m3m5w83boazvkaks&force_verify=true&redirect_uri=http://localhost:22727/api/v1/twitch_auth&scope=channel.read.subscriptions&"}>Connect with Twitch</a>
           <p className={`${!twitchConnected ? "text-red-400" : "text-green-400"}`}>{twitchConnected ? "Connected" : "Not Connected"}</p>
         </div>
         <div>
