@@ -6,7 +6,7 @@ use futures::{SinkExt, StreamExt};
 use lazy_static::lazy_static;
 use parking_lot::Mutex;
 use serde::{Deserialize, Serialize};
-use serde_json::{json, Map};
+use serde_json::{json, Map, Value};
 use tokio_tungstenite::{
     connect_async,
     tungstenite::{client::IntoClientRequest, Message},
@@ -125,6 +125,7 @@ pub async fn get_oauth() -> Result<OAuthRes> {
         .await?
         .text()
         .await?;
+    dbg!(&f);
 
     Ok(serde_json::from_str(&f)?)
 }
@@ -158,23 +159,42 @@ struct RegitTwitchEventsPayload {
     condition: Condition,
 }
 
-async fn regit_twitch_events() {
+async fn regit_twitch_events() -> anyhow::Result<()> {
     let user_id = SQL.get_user().await.unwrap().unwrap().id;
+    let token = SQL.get_twitch_user_token().await.unwrap();
+    let client_id = crate::config!().twitch.client_id.clone();
 
-    let mut events = vec![];
+    let mut events = vec![""];
 
-    let mut sub = serde_json::Map::new();
+    let cur_ws_id = current_ws_id.lock().clone();
 
-    sub.insert("type".to_string(), Value::String(""))
+    let transport = json!({"method": "websocket", "session_id": cur_ws_id.clone()});
 
-    events.push(sub);
+    let f = json!({
+        "type": "channel.follow",
+        "version": "2",
+        "condition": {
+            "broadcaster_user_id": user_id,
+            "moderator_user_id": user_id
+        },
+        "transport": transport
+    });
 
+    dbg!(&f);
 
     let res = rew_cl
         .post("https://api.twitch.tv/helix/eventsub/subscriptions")
-        .body(serde_json::to_string(&body).unwrap_or("{}".to_string()))
+        .header("Content-Type", "application/json")
+        .header("Client-Id", client_id)
+        .header("Authorization", format!("Bearer {}", token.unwrap()))
+        .body(serde_json::to_string(&f).unwrap_or("{}".to_string()))
         .send()
-        .await;
+        .await?
+        .text()
+        .await?;
+
+    println!("{:#}", res);
+    Ok(())
 }
 
 fn start_message_watchdog() {
@@ -253,7 +273,9 @@ impl Twitch {
                             tokio::spawn(regit_twitch_events());
                         }
                         "session_keepalive" => {}
-                        _ => {}
+                        _ => {
+                            dbg!(&text);
+                        }
                     }
                     //sub_to_events(payload.payload.session.id).await;
                 }

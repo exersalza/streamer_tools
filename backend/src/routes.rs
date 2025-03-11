@@ -205,8 +205,12 @@ async fn twitch_auth(Query(query): Query<TwitchAuth>) -> impl IntoResponse {
     dbg!(&ff);
 
     match SQL.update_user_access_token(ff).await {
-        Ok(e) => (),
-        Err(e) => (),
+        Ok(e) => {
+            dbg!(e);
+        }
+        Err(e) => {
+            dbg!(e);
+        }
     }
 
     Redirect::permanent("/")

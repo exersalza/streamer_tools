@@ -10,7 +10,7 @@ use axum::{routing::get, Router};
 use sql::SQL;
 use tokio::net::TcpListener;
 use tower_http::cors::{Any, CorsLayer};
-use twitch::{get_and_store_oauth, update_user_in_db, Twitch};
+use twitch::{get_and_store_oauth, get_oauth, update_user_in_db, Twitch};
 
 async fn root() -> String {
     "hello".to_string()
@@ -29,6 +29,7 @@ async fn main() {
         .merge(routes::create_routes())
         .layer(cors);
 
+    //get_oauth().await;
     tokio::spawn(Twitch::new());
 
     let listener = TcpListener::bind("0.0.0.0:22727").await.unwrap();

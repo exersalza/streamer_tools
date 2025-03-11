@@ -210,7 +210,23 @@ DO UPDATE SET user_token = ?, user_refresh = ?;",1, token, refresh, token, refre
     }
 
     pub async fn update_user_access_token(&self, res: AuthTokenResponseOk) -> anyhow::Result<()> {
-        
+        let f = sqlx::query!(
+            "INSERT INTO twitch_data (id, user_token, user_refresh, token_type, expires_in)
+             VALUES (1, ?, ?, ?, ?)
+             ON CONFLICT (id) DO UPDATE
+             SET user_token = EXCLUDED.user_token,
+                 user_refresh = EXCLUDED.user_refresh,
+                 token_type = EXCLUDED.token_type,
+                 expires_in = EXCLUDED.expires_in",
+            res.access_token,
+            res.refresh_token,
+            res.token_type,
+            res.expires_in
+        )
+        .execute(&self.pool)
+        .await;
+
+
         Ok(())
     }
 
@@ -245,9 +261,13 @@ DO UPDATE SET token = ?, expires_in = ?, token_type = ?;
 
     pub async fn update_user(&self, user: &User) -> anyhow::Result<()> {
         let f = self.get_user().await?;
-
         if f.is_some() {
-            sqlx::query!("update user_data set username = ?, display_name = ?, profile_pic = ?, broadcaster_type = ? where id = ? ", user.login, user.display_name, user.profile_image_url, user.broadcaster_type, user.id).execute(&self.pool).await?;
+            dbg!(&f, &user);
+            match sqlx::query!("update user_data set username = ?, display_name = ?, profile_pic = ?, broadcaster_type = ?, id = ?", user.login, user.display_name, user.profile_image_url, user.broadcaster_type, user.id).execute(&self.pool).await {
+                Ok(v) => println!("{}", v.rows_affected()),
+                Err(e) => println!("{}", e),
+            }
+
             return Ok(());
         }
 
