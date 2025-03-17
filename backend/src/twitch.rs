@@ -7,6 +7,7 @@ use lazy_static::lazy_static;
 use parking_lot::Mutex;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Map, Value};
+use tokio::task::JoinHandle;
 use tokio_tungstenite::{
     connect_async,
     tungstenite::{client::IntoClientRequest, Message},
@@ -193,7 +194,7 @@ async fn regit_twitch_events() -> anyhow::Result<()> {
         .text()
         .await?;
 
-    println!("{:#}", res);
+    dbg!(res);
     Ok(())
 }
 
@@ -206,7 +207,7 @@ fn start_message_watchdog() {
             inter.tick().await;
 
             let last_time = last_message.lock();
-            dbg!(&last_time);
+            //dbg!(&last_time);
             let date = chrono::DateTime::parse_from_rfc3339(&last_time)
                 // this should be infallible bc its coming from the twitch api, maybe fix later
                 .unwrap()
@@ -226,6 +227,7 @@ impl Twitch {
             .unwrap();
 
         let (mut stream, _res) = connect_async(req).await.unwrap();
+        let mut current_threads = vec![];
 
         //stream.send(Message::Text("".into())).await.unwrap();
         let mut data: InitResponse;
@@ -270,7 +272,7 @@ impl Twitch {
                             *cur_id = session.id;
                             drop(cur_id);
 
-                            tokio::spawn(regit_twitch_events());
+                            current_threads.push(tokio::spawn(regit_twitch_events()));
                         }
                         "session_keepalive" => {}
                         _ => {
@@ -284,7 +286,7 @@ impl Twitch {
                     break;
                 }
                 Message::Ping(e) => {
-                    dbg!("send pong", &e);
+                    dbg!("send pong");
                     let _ = stream.send(Message::Pong(e)).await;
                 }
                 _ => {

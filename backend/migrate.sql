@@ -1,5 +1,5 @@
 -- --------------------------------------------------------
--- Host:                         E:\development\rust\streamer_tools\db.sqlite
+-- Host:                         E:\development\rust\streamer_tools\backend\db.sqlite
 -- Server version:               3.48.0
 -- Server OS:                    
 -- HeidiSQL Version:             12.10.0.7000
@@ -14,11 +14,23 @@
 /*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
 
 
+-- Dumping database structure for db
+CREATE DATABASE IF NOT EXISTS "db";
+;
+
+-- Dumping structure for table db.subathon_data
+CREATE TABLE IF NOT EXISTS "subathon_data" (
+	"id" VARCHAR(50) NOT NULL DEFAULT NULL, "total_donos" INTEGER NULL, "total_subs" INTEGER NULL, "total_bits" INTEGER NULL,
+	PRIMARY KEY ("id")
+);
+
+-- Data exporting was unselected.
+
 -- Dumping structure for table db.timer
 CREATE TABLE IF NOT EXISTS "timer" (
 	"id" VARCHAR(36) NOT NULL DEFAULT NULL,
 	"name" VARCHAR(255) NOT NULL DEFAULT NULL,
-	"time" BIGINT NULL DEFAULT NULL,
+	"time" BIGINT NULL DEFAULT NULL, "main" TINYINT NULL DEFAULT '0', "is_active" TINYINT NULL DEFAULT '0', "color" VARCHAR(11) NULL DEFAULT '#000000', "overtitle" VARCHAR(50) NULL, "undertitle" VARCHAR(50) NULL,
 	PRIMARY KEY ("id")
 );
 
@@ -37,6 +49,33 @@ CREATE TABLE IF NOT EXISTS "timer_go_down_by" (
 	"bits_n" INTEGER NULL,
 	PRIMARY KEY ("id"),
 	CONSTRAINT "ID" FOREIGN KEY ("id") REFERENCES "timer" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION
+);
+
+-- Data exporting was unselected.
+
+-- Dumping structure for table db.twitch_data
+CREATE TABLE IF NOT EXISTS "twitch_data" (
+	"id" INTEGER NOT NULL,
+	"user_token" VARCHAR(255) NULL DEFAULT NULL, "user_refresh" VARCHAR(255) NULL DEFAULT NULL, "token_type" VARCHAR(50) NULL DEFAULT NULL, "expires_in" INTEGER NULL,
+	PRIMARY KEY ("id")
+);
+
+-- Data exporting was unselected.
+
+-- Dumping structure for table db.user_data
+CREATE TABLE IF NOT EXISTS "user_data" (
+	"username" VARCHAR(50) NULL DEFAULT NULL,
+	"display_name" VARCHAR(50) NULL DEFAULT NULL,
+	"profile_pic" VARCHAR(255) NULL DEFAULT NULL,
+	"broadcaster_type" VARCHAR(255) NULL DEFAULT NULL
+, "id" VARCHAR(50) NULL DEFAULT NULL);
+
+-- Data exporting was unselected.
+
+-- Dumping structure for table db._oauth
+CREATE TABLE IF NOT EXISTS "_oauth" (
+	"id" INTEGER NOT NULL, "token" VARCHAR(50) NULL, "expires_in" DATETIME NULL, "token_type" VARCHAR(50) NULL,
+	PRIMARY KEY ("id")
 );
 
 -- Data exporting was unselected.
