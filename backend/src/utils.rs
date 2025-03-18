@@ -66,7 +66,7 @@ impl Events {
 
     pub fn remove_callback(&mut self, event: EventTypes, cb: CBType) {
         if let Some(val) = self.__callbacks.get_mut(&event) {
-            val.retain(|v| *v != cb);
+            val.retain(|v| !std::ptr::fn_addr_eq(*v, cb));
         }
     }
 

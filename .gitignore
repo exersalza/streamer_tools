@@ -8,3 +8,5 @@ config.toml
 *.sqlite
 package-lock.json
 .DS_Store
+db.sqlite-wal
+db.sqlite-shm
