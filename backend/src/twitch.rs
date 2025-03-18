@@ -22,8 +22,11 @@ const KEEPALIVE_TIMEOUT: i32 = 10;
 const MSG_LOG_LEN: usize = 256;
 
 lazy_static! {
-    static ref last_message: AM<String> =
-        Arc::new(Mutex::new(String::from("1970-01-01T01:01:01.000000000Z")));
+    static ref last_message: AM<String> = Arc::new(Mutex::new(
+        // get the startup time, bc the loop managing the reconnect would break with the start of
+        // the unix time
+        chrono::offset::Utc::now().to_rfc3339().to_string()
+    ));
     static ref msg_id_log: AM<Vec<String>> = Arc::new(Mutex::new(Vec::with_capacity(MSG_LOG_LEN)));
     static ref current_ws_id: AM<String> = Arc::new(Mutex::new("".to_string()));
     static ref TWITCH_EVENTS: Vec<&'static str> = vec![];
@@ -126,12 +129,19 @@ pub async fn get_oauth() -> Result<OAuthRes> {
         .await?
         .text()
         .await?;
-    dbg!(&f);
 
     Ok(serde_json::from_str(&f)?)
 }
 
 pub async fn get_and_store_oauth() -> Result<()> {
+    if let Ok(Some(time)) = SQL.get_expires_in_oauth().await {
+        let now = chrono::Utc::now().timestamp();
+        // trigger if the token is valid for another day
+        if (time - now) >= (60 * 60 * 24) {
+            return Ok(());
+        }
+    }
+
     let res = get_oauth().await?;
 
     let now = chrono::Utc::now();
@@ -140,24 +150,6 @@ pub async fn get_and_store_oauth() -> Result<()> {
         .await?;
 
     Ok(())
-}
-
-#[derive(Serialize, Debug)]
-struct Transport {
-    method: String,
-    session_id: String,
-}
-
-#[derive(Serialize, Debug)]
-struct Condition {
-    user_id: String,
-}
-
-#[derive(Serialize, Debug)]
-struct RegitTwitchEventsPayload {
-    transport: Transport,
-    version: String,
-    condition: Condition,
 }
 
 async fn regit_twitch_events() -> anyhow::Result<()> {
@@ -182,6 +174,7 @@ async fn regit_twitch_events() -> anyhow::Result<()> {
     });
 
     dbg!(&f);
+    dbg!(&token);
 
     let res = rew_cl
         .post("https://api.twitch.tv/helix/eventsub/subscriptions")
@@ -214,13 +207,22 @@ fn start_message_watchdog() {
                 .timestamp();
             let now = chrono::Utc::now().timestamp();
 
-            dbg!(now - date);
+            if (now - date) > 10 {
+                // TODO: implement reconnect
+                dbg!("implement reconnect");
+                break;
+            }
         }
     });
 }
 
 impl Twitch {
     pub async fn new() -> Self {
+        let _ = get_and_store_oauth().await;
+        Self {}
+    }
+
+    pub async fn connect() {
         // twitch websocket shit
         let req = "wss://eventsub.wss.twitch.tv/ws"
             .into_client_request()
@@ -228,9 +230,6 @@ impl Twitch {
 
         let (mut stream, _res) = connect_async(req).await.unwrap();
         let mut current_threads = vec![];
-
-        //stream.send(Message::Text("".into())).await.unwrap();
-        let mut data: InitResponse;
 
         start_message_watchdog();
         // Receive messages
@@ -274,7 +273,9 @@ impl Twitch {
 
                             current_threads.push(tokio::spawn(regit_twitch_events()));
                         }
-                        "session_keepalive" => {}
+                        "session_keepalive" => {
+                            crate::debug!("[twitch] heartbeat");
+                        }
                         _ => {
                             dbg!(&text);
                         }
@@ -286,14 +287,14 @@ impl Twitch {
                     break;
                 }
                 Message::Ping(e) => {
-                    dbg!("send pong");
+                    crate::debug!("[twitch] received ping...");
                     let _ = stream.send(Message::Pong(e)).await;
+                    crate::debug!("[twitch] sent pong...");
                 }
                 _ => {
                     dbg!("some default");
                 }
             }
         }
-        Self {}
     }
 }

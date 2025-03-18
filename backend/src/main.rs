@@ -1,4 +1,5 @@
 pub mod config;
+pub mod logs;
 pub mod macros;
 pub mod oauth;
 pub mod routes;
@@ -30,7 +31,8 @@ async fn main() {
         .layer(cors);
 
     //get_oauth().await;
-    tokio::spawn(Twitch::new());
+    let twitch_cl = Twitch::new().await;
+    tokio::spawn(twitch::Twitch::connect());
 
     let listener = TcpListener::bind("0.0.0.0:22727").await.unwrap();
     println!("starting api");

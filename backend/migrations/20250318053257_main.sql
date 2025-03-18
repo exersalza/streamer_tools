@@ -70,7 +70,7 @@ CREATE TABLE IF NOT EXISTS "user_data" (
 
 -- Dumping structure for table db._oauth
 CREATE TABLE IF NOT EXISTS "_oauth" (
-	"id" INTEGER NOT NULL, "token" VARCHAR(50) NULL, "expires_in" DATETIME NULL, "token_type" VARCHAR(50) NULL,
+	"id" INTEGER NOT NULL, "token" VARCHAR(50) NULL, "expires_in" INTEGER NULL, "token_type" VARCHAR(50) NULL,
 	PRIMARY KEY ("id")
 );
 

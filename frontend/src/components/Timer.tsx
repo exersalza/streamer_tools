@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "preact/hooks";
+import { useEffect, useReducer, useRef, useState } from "preact/hooks";
 import { TimerType } from "../main";
 import { Icons } from "./Icons";
 import { ChangeEvent } from "preact/compat";
@@ -509,12 +509,143 @@ export function CreateTimerOverlay(props: TimerOverlayProps) {
   );
 }
 
-interface TimerWidgetProps {}
+interface NumberProps {
+  number: number | string;
+  showAnimation?: boolean;
+}
 
-export function TimerWidget(props: TimerWidgetProps) {
-  const [states, setState] = useState<TimerStates>({
-    loading: true,
-    data: null,
+const NumberThingy = (props: NumberProps) => {
+  return (
+    <div className={"relative"}>
+      <div className={"overflow-hidden h-16 text-6xl font-mono"}>
+        {Array.from({ length: 10 }, (_, i) => i).map((v) => {
+          return (
+            <p
+              className={`${!!props.showAnimation ? "transition" : ""} select-none`}
+              style={{ transform: `translateY(calc(-60px * ${props.number}))` }}
+            >
+              {v}
+            </p>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
+
+const Countdown = (props: {
+  sec: number;
+  className?: string;
+  showAnimation?: boolean;
+}) => {
+  const [time, setTime] = useState("");
+
+  const convertTimeToString = (s: number) => {
+    const hours = Math.floor(s / 3600);
+    const minutes = Math.floor((s % 3600) / 60);
+    const seconds = s % 60;
+
+    return (
+      String(hours).padStart(3, "0") +
+      String(minutes).padStart(2, "0") +
+      String(seconds).padStart(2, "0")
+    );
+  };
+
+  useEffect(() => {
+    setTime(convertTimeToString(props.sec));
+  }, [props.sec]);
+
+  return (
+    <div className={`flex ${props.className}`}>
+      <NumberThingy number={time[0]} showAnimation={props.showAnimation} />
+      <NumberThingy number={time[1]} showAnimation={props.showAnimation} />
+      <NumberThingy number={time[2]} showAnimation={props.showAnimation} />
+      <p className={"text-6xl h-16 font-mono"}>:</p>
+      <NumberThingy number={time[3]} showAnimation={props.showAnimation} />
+      <NumberThingy number={time[4]} showAnimation={props.showAnimation} />
+      <p className={"text-6xl h-16 font-mono"}>:</p>
+      <NumberThingy number={time[5]} showAnimation={props.showAnimation} />
+      <NumberThingy number={time[6]} showAnimation={props.showAnimation} />
+    </div>
+  );
+};
+
+type TimerCompState = {
+  time: number;
+  loading: boolean;
+  timerPaused: boolean;
+  showAnimation: boolean;
+  text: {
+    upper: string;
+    lower: string;
+  };
+  custom: {
+    text: {
+      upper: string;
+      lower: string;
+    };
+  };
+};
+
+type Actions = {
+  type:
+    | "UpdateTime"
+    | "IncTime"
+    | "DecTime"
+    | "TogglePause"
+    | "UpdateText"
+    | "ToggleAnimate"
+    | "ToggleLoading";
+  payload?: any;
+};
+
+export const TimerWidget = () => {
+  const reducer = (prev: TimerCompState, action: Actions) => {
+    switch (action.type) {
+      case "UpdateTime":
+        return { ...prev, time: action.payload.time };
+      case "IncTime":
+        return { ...prev, time: prev.time + 1 };
+      case "DecTime":
+        return { ...prev, time: Math.max(0, prev.time - 1) };
+      case "UpdateText":
+        return {
+          ...prev,
+          text: { ...prev.text, [action.payload.key]: action.payload.value },
+        };
+      case "TogglePause":
+        return {
+          ...prev,
+          timerPaused: !prev.timerPaused,
+        };
+      case "ToggleAnimate":
+        return {
+          ...prev,
+          showAnimation: !prev.showAnimation,
+        };
+      case "ToggleLoading":
+        return {
+          ...prev,
+          loading: !prev.loading,
+        };
+      default:
+        throw Error("Action is not valid");
+    }
+  };
+
+  const [state, dispatch] = useReducer(reducer, {
+    time: 0,
+    loading: false,
+    text: { upper: "cool text", lower: "cool text" },
+    showAnimation: true,
+    timerPaused: false,
+    custom: {
+      text: {
+        upper: "",
+        lower: "",
+      },
+    },
   });
 
   useEffect(() => {
@@ -526,20 +657,18 @@ export function TimerWidget(props: TimerWidgetProps) {
         }
 
         const d = await res.json();
-        setState((prev) => ({ ...prev, data: d[0], loading: false }));
+        console.log(d)
       },
     );
   }, []);
 
-  if (states.loading) {
+  if (state.loading) {
     return <Loading />;
   }
 
   return (
-    <div className={"h-screen w-screen bg-gray-950 flex flex-col items-center"}>
-      <p className={"text-white"}>{states.data?.overtitle}</p>
-      <p className={"text-white text-6xl"}>{parseTime(states.data?.timer)}</p>
-      <p className={"text-white"}>{states.data?.undertitle}</p>
+    <div className={"h-screen w-screen text-white flex flex-col items-center"}>
+      <Countdown sec={state.time} />
     </div>
   );
-}
+};

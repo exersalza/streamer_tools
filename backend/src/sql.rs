@@ -83,7 +83,7 @@ impl Sql {
                 timer: Some(item.time.unwrap_or(0)),
                 main: item.main.unwrap_or(0) == 1,
                 is_active: item.is_active.unwrap_or(0) == 1,
-                color: item.color.clone().unwrap_or("#000000".into()),
+                color: item.color.clone().unwrap_or("#000".into()),
                 overtitle: item.overtitle.clone().unwrap_or("".into()),
                 undertitle: item.undertitle.clone().unwrap_or("".into()),
                 increase_times: IncTimes {
@@ -236,6 +236,12 @@ DO UPDATE SET user_token = ?, user_refresh = ?;",1, token, refresh, token, refre
         Ok(ret.user_refresh.unwrap_or("".to_string()))
     }
 
+
+    pub async fn get_expires_in_oauth(&self) -> anyhow::Result<Option<i64>> {
+        let ret = sqlx::query!("select expires_in from _oauth where id=1").fetch_one(&self.pool).await?;
+        Ok(ret.expires_in)
+    }
+
     /// Gets the OAuth for the bot side related stuff
     ///
     /// # Returns
@@ -298,7 +304,7 @@ DO UPDATE SET token = ?, expires_in = ?, token_type = ?;
         let f = sqlx::query!("select id, username, display_name, profile_pic, broadcaster_type from user_data").fetch_all(&self.pool).await?;
 
         if let Some(user) = f.last() {
-            return Ok(Some(User {
+            return Ok(Some(User { // godspeed 47
                 id: user.id.clone().unwrap_or_default().to_string(),
                 login: user.username.clone().unwrap_or_default(),
                 display_name: user.display_name.clone().unwrap_or_default(),
