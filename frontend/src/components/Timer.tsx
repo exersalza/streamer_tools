@@ -5,6 +5,7 @@ import { ChangeEvent } from "preact/compat";
 import { API, parseTime } from "./utils";
 import { HexColorPicker, HexColorInput } from "powerful-color-picker";
 import { Loading } from "./Loading";
+import { Pause, Play, Square } from "lucide-preact";
 
 type States = {};
 
@@ -113,75 +114,45 @@ export function Timer(props: TimerProps) {
             Control elements
           </p>
           <div className={"flex gap-2 "}>
-            <button
-              id={"control-button-M5"}
-              onClick={buttonOnClick}
-              className={
-                "transition-all text-zinc-400 hover:text-zinc-100 rounded-lg bg-gray-800 p-2 cursor-pointer border-1 border-gray-700"
-              }
-            >
-              -5 Min
-            </button>
-            <button
-              id={"control-button-M1"}
-              onClick={buttonOnClick}
-              className={
-                "transition-all  text-zinc-400 hover:text-zinc-100 rounded-lg bg-gray-800 p-2 cursor-pointer border-1 border-gray-600"
-              }
-            >
-              -1 Min
-            </button>
-
-            <button
-              id={"control-button-Stop"}
-              onClick={buttonOnClick}
-              className={
-                "transition-all text-zinc-400 rounded-lg bg-gray-800 p-2 cursor-pointer border-1 border-gray-600 hover:text-red-500"
-              }
-            >
-              {Icons.stop}
-            </button>
-
-            <button
-              id={"control-button-Play"}
-              onClick={buttonOnClick}
-              className={
-                "transition-all text-zinc-400 rounded-lg bg-gray-800 p-2 cursor-pointer border-1 border-gray-600 hover:text-green-500"
-              }
-            >
-              {Icons.play}
-            </button>
-            <button
-              id={"control-button-Pause"}
-              onClick={buttonOnClick}
-              className={
-                "transition-all text-zinc-400 hover:text-zinc-100 transition-all rounded-lg bg-gray-800 p-2 cursor-pointer border-1 border-gray-600 "
-              }
-            >
-              {Icons.pombear}
-            </button>
-
-            <button
-              id={"control-button-P1"}
-              onClick={buttonOnClick}
-              className={
-                "transition-all text-zinc-400 hover:text-zinc-100 rounded-lg bg-gray-800 p-2 cursor-pointer border-1 border-gray-600"
-              }
-            >
-              +1 Min
-            </button>
-            <button
-              id={"control-button-P5"}
-              onClick={buttonOnClick}
-              className={
-                "transition-all text-zinc-400 hover:text-zinc-100 rounded-lg bg-gray-800 p-2 cursor-pointer border-1 border-gray-600"
-              }
-            >
-              +5 Min
-            </button>
+            {[
+              ["M5", "-5"],
+              ["M1", "-1"],
+              ["Stop", <Square className={"pointer-events-none"} />],
+              ["Play", <Play className={"pointer-events-none"} />],
+              ["Pause", <Pause className={"pointer-events-none"} />],
+              ["P1", "+1"],
+              ["P5", "+5"],
+            ].map(([type, value, ...classnames]) => (
+              <button
+                key={type}
+                id={`control-button-${type}`}
+                onClick={buttonOnClick}
+                className={`
+                  transition-all min-w-10 text-zinc-400 rounded-lg bg-gray-800 p-2 cursor-pointer border border-gray-700
+                  ${
+                    type === "Stop"
+                      ? "hover:text-red-500"
+                      : type === "Play"
+                        ? "hover:text-green-500"
+                        : "hover:text-zinc-100"
+                  }
+                  ${classnames.join(" ")}
+                `}
+              >
+                {value}
+              </button>
+            ))}
           </div>
         </div>
         <div className={""}>
+          <div className={"select-none flex gap-1"}>
+            <input
+              id={"toggle-timer-white"}
+              className={"text-white"}
+              type="checkbox"
+            />
+            <label for={"toggle-timer-white"}>Toggle white background</label>
+          </div>
           <iframe
             src={`/${props.uuid}`}
             className={"rounded-lg ring-gray-700 ring-1"}
@@ -557,7 +528,7 @@ const Countdown = (props: {
   }, [props.sec]);
 
   return (
-    <div className={`flex ${props.className}`}>
+    <div className={`flex ${props.className} select-none`}>
       <NumberThingy number={time[0]} showAnimation={props.showAnimation} />
       <NumberThingy number={time[1]} showAnimation={props.showAnimation} />
       <NumberThingy number={time[2]} showAnimation={props.showAnimation} />
@@ -657,7 +628,7 @@ export const TimerWidget = () => {
         }
 
         const d = await res.json();
-        console.log(d)
+        console.log(d);
       },
     );
   }, []);
