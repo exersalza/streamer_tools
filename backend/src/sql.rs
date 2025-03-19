@@ -42,8 +42,6 @@ pub struct Timer {
     pub increase_times: IncTimes,
     pub is_active: bool,
     pub color: String,
-    pub overtitle: String,
-    pub undertitle: String
 }
 
 #[derive(Serialize, Debug, Deserialize)]
@@ -69,7 +67,7 @@ impl Sql {
     }
 
     pub async fn get_timer(&self, id: String) -> anyhow::Result<Vec<Timer>> {
-        let res = sqlx::query!("SELECT s.id, s.name, s.time, s.main,s.overtitle, s.undertitle, s.is_active, s.color, t.follow, t.sub_t1, t.sub_t2, t.sub_t3, t.dono_each_n, t.dono_n, t.bits_each_n, t.bits_n FROM timer AS s LEFT OUTER JOIN timer_go_down_by AS t ON s.id = t.id where t.id = ?", id)
+        let res = sqlx::query!("SELECT s.id, s.name, s.time, s.main, s.is_active, s.color, t.follow, t.sub_t1, t.sub_t2, t.sub_t3, t.dono_each_n, t.dono_n, t.bits_each_n, t.bits_n FROM timer AS s LEFT OUTER JOIN timer_go_down_by AS t ON s.id = t.id where t.id = ?", id)
             .fetch_all(&self.pool)
             .await?;
 
@@ -84,8 +82,6 @@ impl Sql {
                 main: item.main.unwrap_or(0) == 1,
                 is_active: item.is_active.unwrap_or(0) == 1,
                 color: item.color.clone().unwrap_or("#000".into()),
-                overtitle: item.overtitle.clone().unwrap_or("".into()),
-                undertitle: item.undertitle.clone().unwrap_or("".into()),
                 increase_times: IncTimes {
                     follow: item.follow,
                     sub_t1: item.sub_t1,
@@ -160,12 +156,10 @@ impl Sql {
         let id = payload.id.to_string();
 
         let _ = sqlx::query!(
-            r#"update timer set name = ?, time = ?, main = ?, overtitle = ?, undertitle = ? where id = ?"#,
+            r#"update timer set name = ?, time = ?, main = ? where id = ?"#,
             payload.name,
             payload.timer,
             payload.main,
-            payload.overtitle,
-            payload.undertitle,
             id
         ).execute(&self.pool).await?;
 
