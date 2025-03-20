@@ -7,7 +7,7 @@ macro_rules! config {
 
 #[macro_export]
 macro_rules! top_level {
-    ($level:expr, $($msg:tt)+) => {{
+    ($level:expr_2021, $($msg:tt)+) => {{
         let inter_log = &*$crate::logs::log;
         let mut lock = inter_log.lock();
 
