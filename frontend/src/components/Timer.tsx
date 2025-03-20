@@ -52,16 +52,18 @@ interface TimerProps {
 type TimerStates = {
   loading: boolean;
   data: TimerType | null;
+  background_white: boolean;
 };
 
 export function Timer(props: TimerProps) {
   const [state, setState] = useState<TimerStates>({
     loading: true,
     data: null,
+    background_white: false
   });
 
   useEffect(() => {
-    setState(() => ({ loading: true, data: null }));
+    setState((prev) => ({...prev, loading: true, data: null }));
 
     fetch(API + `/get_timer?uuid=${props.uuid}`).then(async (res) => {
       if (!res.ok) {
@@ -70,7 +72,7 @@ export function Timer(props: TimerProps) {
       }
 
       const data = await res.json();
-      setState(() => ({ loading: false, data: data[0] }));
+      setState((prev) => ({...prev, loading: false, data: data[0] as TimerType }));
     });
   }, [props.uuid]);
 
@@ -150,12 +152,14 @@ export function Timer(props: TimerProps) {
               id={"toggle-timer-white"}
               className={"text-white"}
               type="checkbox"
+              checked={state.background_white}
+              onChange={() => {setState((prev) => ({...prev, background_white: !prev.background_white}))}}
             />
             <label for={"toggle-timer-white"}>Toggle white background</label>
           </div>
           <iframe
             src={`/${props.uuid}`}
-            className={"rounded-lg ring-gray-700 ring-1"}
+            className={`rounded-lg ring-gray-700 ring-1 ${state.background_white ? "bg-white" : ""}`}
           />
         </div>
       </div>
@@ -209,7 +213,7 @@ export function CreateTimerOverlay(props: TimerOverlayProps) {
     dono_n: ["(Dono) Increase time by", "border-green-700"],
   };
 
-  let name = useRef<HTMLInputElement>();
+  let name = useRef<HTMLInputElement>(null);
   const container = useRef<HTMLDivElement>(null);
 
   function changeColor(e: InputEvent) {
@@ -269,8 +273,6 @@ export function CreateTimerOverlay(props: TimerOverlayProps) {
         timer: values.hour * 60 * 60 + values.minute * 60 + values.second,
         color: color,
         is_active: values.is_active,
-        overtitle: "",
-        undertitle: "",
         increase_times: {
           follow: values.follow,
           sub_t1: values.sub_t1,

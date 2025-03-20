@@ -3,7 +3,7 @@ use futures::TryFutureExt;
 use parking_lot::Mutex;
 use serde::{Deserialize, Serialize};
 use sqlx::error;
-use std::{collections::HashMap, sync::Arc};
+use std::{collections::HashMap, sync::Arc, thread, time::Duration};
 use tower::util::Optional;
 
 use axum::{
@@ -20,14 +20,19 @@ use futures_util::{
     sink::SinkExt,
     stream::{SplitSink, SplitStream, StreamExt},
 };
+use lazy_static::lazy_static;
 use tokio::sync::broadcast;
 
 use crate::{
-    config,
+    config::{self, AM},
     sql::{Timer, SQL},
     twitch::{update_user_in_db, User},
     utils::{ButtonFunction, EventTypes, Events},
 };
+
+lazy_static! {
+    static ref ws_write_fn: AM<Vec<SplitSink<WebSocket, Message>>> = Arc::new(Mutex::new(vec![]));
+}
 
 const API_VERSION: &str = "v1";
 
@@ -66,7 +71,7 @@ fn pre(input: &str) -> String {
 }
 
 async fn get_twitch_username() -> String {
-    config!().twitch.username.clone()
+    crate::config!().twitch.username.clone()
 }
 
 async fn get_all_timers() -> impl IntoResponse {
@@ -140,7 +145,7 @@ struct AuthTokenResponseNotOk {}
 
 async fn refresh_twitch_token() {
     let client = reqwest::Client::new();
-    let twitch = config!().twitch.clone();
+    let twitch = crate::config!().twitch.clone();
 
     let token = match SQL.get_refresh_token().await {
         Ok(toki) => toki,
@@ -182,7 +187,7 @@ async fn twitch_auth(Query(query): Query<TwitchAuth>) -> impl IntoResponse {
     }
 
     let client = reqwest::Client::new();
-    let twitch = config!().twitch.clone();
+    let twitch = crate::config!().twitch.clone();
 
     let fjdaslkjfkls = vec![
         ("client_id", twitch.client_id.clone()),
@@ -299,6 +304,8 @@ async fn write(mut sen: SplitSink<WebSocket, Message>, state: RouteStates) {
     if sen.send(Message::Ping(vec![1, 2, 3].into())).await.is_err() {
         return;
     }
+
+    tokio::spawn(async {});
 
     while let Ok(msg) = rx.recv().await {
         if msg == "close" {

@@ -21,8 +21,6 @@ export type TimerType = {
   timer: number;
   color: string;
   main: boolean;
-  overtitle: string | undefined;
-  undertitle: string | undefined;
   increase_times: {
     follow: number | undefined;
     sub_t1: number | undefined;
