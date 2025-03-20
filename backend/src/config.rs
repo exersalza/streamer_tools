@@ -145,7 +145,7 @@ impl Config {
     }
 
     async fn save_to_file(self) -> anyhow::Result<()> {
-        let mut handle = tokio::fs::OpenOptions::new()
+        let handle = tokio::fs::OpenOptions::new()
             .write(true)
             .truncate(true)
             .open(self.path)

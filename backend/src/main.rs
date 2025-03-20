@@ -8,10 +8,9 @@ pub mod twitch;
 pub mod utils;
 
 use axum::{routing::get, Router};
-use sql::SQL;
 use tokio::net::TcpListener;
 use tower_http::cors::{Any, CorsLayer};
-use twitch::{get_and_store_oauth, get_oauth, update_user_in_db, Twitch};
+use twitch::Twitch;
 
 async fn root() -> String {
     "hello".to_string()

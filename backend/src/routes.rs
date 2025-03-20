@@ -1,10 +1,7 @@
-use futures::TryFutureExt;
 /// this gonna be a messy file, dw about it
 use parking_lot::Mutex;
 use serde::{Deserialize, Serialize};
-use sqlx::error;
-use std::{collections::HashMap, sync::Arc, thread, time::Duration};
-use tower::util::Optional;
+use std::{collections::HashMap, sync::Arc};
 
 use axum::{
     extract::{
@@ -24,10 +21,10 @@ use lazy_static::lazy_static;
 use tokio::sync::broadcast;
 
 use crate::{
-    config::{self, AM},
+    config::{AM},
     sql::{Timer, SQL},
-    twitch::{update_user_in_db, User},
-    utils::{ButtonFunction, EventTypes, Events},
+    twitch::update_user_in_db,
+    utils::ButtonFunction,
 };
 
 lazy_static! {

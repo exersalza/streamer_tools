@@ -1,14 +1,12 @@
-use std::{str::FromStr, sync::Arc};
+use std::str::FromStr;
 
-use anyhow::anyhow;
 use chrono::{DateTime, Utc};
 use lazy_static::lazy_static;
-use parking_lot::Mutex;
 use serde::{Deserialize, Serialize};
-use sqlx::{Executor, Sqlite, SqlitePool};
+use sqlx::{Executor, SqlitePool};
 use uuid::Uuid;
 
-use crate::{routes::AuthTokenResponseOk, sql, twitch::User};
+use crate::{routes::AuthTokenResponseOk, twitch::User};
 
 lazy_static! {
     pub static ref SQL: Sql = Sql::new();

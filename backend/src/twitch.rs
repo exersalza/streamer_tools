@@ -1,20 +1,19 @@
 use core::{fmt, str};
-use std::{any::Any, collections::HashMap, sync::Arc};
+use std::{collections::HashMap, sync::Arc};
 
 use anyhow::Result;
 use futures::{SinkExt, StreamExt};
 use lazy_static::lazy_static;
 use parking_lot::Mutex;
 use serde::{Deserialize, Serialize};
-use serde_json::{json, Map, Value};
-use tokio::task::JoinHandle;
+use serde_json::json;
 use tokio_tungstenite::{
     connect_async,
     tungstenite::{client::IntoClientRequest, Message},
 };
 
 use crate::{
-    config::{self, AM},
+    config::{AM},
     sql::SQL,
 };
 
@@ -157,7 +156,7 @@ async fn regit_twitch_events() -> anyhow::Result<()> {
     let token = SQL.get_twitch_user_token().await.unwrap();
     let client_id = crate::config!().twitch.client_id.clone();
 
-    let mut events = vec![""];
+    let events = vec![""];
 
     let cur_ws_id = current_ws_id.lock().clone();
 
