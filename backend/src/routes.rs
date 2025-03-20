@@ -299,10 +299,36 @@ async fn handle_socket(socket: WebSocket, state: RouteStates) {
     }
 }
 
+#[derive(Deserialize, Debug)]
+#[serde(tag = "action")]
+enum Action {
+    Dec,
+}
+
+#[derive(Deserialize, Debug)]
+struct WsPayload {
+    id: String,
+    payload: Action,
+}
+
 async fn read(mut rec: SplitStream<WebSocket>, state: RouteStates) {
     while let Some(msg) = rec.next().await {
         match msg {
-            Ok(Message::Text(_text)) => {}
+            Ok(Message::Text(text)) => match serde_json::from_str::<WsPayload>(&text.to_string()) {
+                Ok(v) => match v.payload {
+                    Action::Dec => {
+                        let _ = SQL.dec_timer(v.id).await;
+                    }
+                },
+                Err(e) => {
+                    let tx = state.tx.lock();
+                    // we dont care about this Result here, bc it's pretty useless on the backend,
+                    // its just to tell the frontend that it should start formatting its shit
+                    // right.
+                    let _ = tx.send(format!("Couldn't decode what ever the fuck you send. {e}"));
+                    continue;
+                }
+            },
             Ok(Message::Close(_)) => {
                 let tx = state.tx.lock();
                 let _ = tx.send(String::from("close"));

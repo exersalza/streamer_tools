@@ -2,10 +2,10 @@ import { useEffect, useReducer, useRef, useState } from "preact/hooks";
 import { TimerType } from "../main";
 import { Icons } from "./Icons";
 import { ChangeEvent } from "preact/compat";
-import { API, parseTime } from "./utils";
+import { API, BACKEND, HOST, parseTime } from "./utils";
 import { HexColorPicker, HexColorInput } from "powerful-color-picker";
 import { Loading } from "./Loading";
-import { Pause, Play, Square } from "lucide-preact";
+import { Backpack, Pause, Play, Square } from "lucide-preact";
 
 type States = {};
 
@@ -63,7 +63,7 @@ export function Timer(props: TimerProps) {
   });
 
   useEffect(() => {
-    setState((prev) => ({...prev, loading: true, data: null }));
+    setState((prev) => ({ ...prev, loading: true, data: null }));
 
     fetch(API + `/get_timer?uuid=${props.uuid}`).then(async (res) => {
       if (!res.ok) {
@@ -72,7 +72,7 @@ export function Timer(props: TimerProps) {
       }
 
       const data = await res.json();
-      setState((prev) => ({...prev, loading: false, data: data[0] as TimerType }));
+      setState((prev) => ({ ...prev, loading: false, data: data[0] as TimerType }));
     });
   }, [props.uuid]);
 
@@ -131,12 +131,11 @@ export function Timer(props: TimerProps) {
                 onClick={buttonOnClick}
                 className={`
                   transition-all min-w-10 text-zinc-400 rounded-lg bg-gray-800 p-2 cursor-pointer border border-gray-700
-                  ${
-                    type === "Stop"
-                      ? "hover:text-red-500"
-                      : type === "Play"
-                        ? "hover:text-green-500"
-                        : "hover:text-zinc-100"
+                  ${type === "Stop"
+                    ? "hover:text-red-500"
+                    : type === "Play"
+                      ? "hover:text-green-500"
+                      : "hover:text-zinc-100"
                   }
                   ${classnames.join(" ")}
                 `}
@@ -153,7 +152,7 @@ export function Timer(props: TimerProps) {
               className={"text-white"}
               type="checkbox"
               checked={state.background_white}
-              onChange={() => {setState((prev) => ({...prev, background_white: !prev.background_white}))}}
+              onChange={() => { setState((prev) => ({ ...prev, background_white: !prev.background_white })) }}
             />
             <label for={"toggle-timer-white"}>Toggle white background</label>
           </div>
@@ -563,13 +562,13 @@ type TimerCompState = {
 
 type Actions = {
   type:
-    | "UpdateTime"
-    | "IncTime"
-    | "DecTime"
-    | "TogglePause"
-    | "UpdateText"
-    | "ToggleAnimate"
-    | "ToggleLoading";
+  | "UpdateTime"
+  | "IncTime"
+  | "DecTime"
+  | "TogglePause"
+  | "UpdateText"
+  | "ToggleAnimate"
+  | "ToggleLoading";
   payload?: any;
 };
 
@@ -608,7 +607,7 @@ export const TimerWidget = () => {
   };
 
   const [state, dispatch] = useReducer(reducer, {
-    time: 0,
+    time: 200,
     loading: false,
     text: { upper: "cool text", lower: "cool text" },
     showAnimation: true,
@@ -621,7 +620,33 @@ export const TimerWidget = () => {
     },
   });
 
+  const connectWebsocket = () => {
+    const socket = new WebSocket(BACKEND + "/ws");
+
+    if (!socket) {
+      console.error("couldn't open ws connection to the backend. Exiting...");
+      return 1
+    }
+
+    socket.onopen = () => {
+      console.debug("[Websocket] opened connection...");
+    }
+
+    socket.onmessage = (msg: MessageEvent) => {
+      const data = msg.data;
+      console.log(data)
+
+      if (data === "tick") {
+        dispatch({ type: "DecTime" });
+        socket.send(JSON.stringify({ id: location.pathname.replace("/", ""), payload: { action: "Dec" } }))
+      }
+    }
+  }
+
   useEffect(() => {
+    // init websocket stuff here
+    connectWebsocket();
+
     fetch(API + `/get_timer?uuid=${location.pathname.replace("/", "")}`).then(
       async (res) => {
         if (!res.ok) {
@@ -633,6 +658,7 @@ export const TimerWidget = () => {
         console.log(d);
       },
     );
+
   }, []);
 
   if (state.loading) {
@@ -640,8 +666,8 @@ export const TimerWidget = () => {
   }
 
   return (
-    <div className={"h-screen w-screen text-white flex flex-col items-center"}>
-      <Countdown sec={state.time} />
+    <div className={`h-screen w-screen text-white flex flex-col items-center ${window.frameElement != null ? "" : "bg-zinc-900"}`}>
+      <Countdown sec={state.time} showAnimation={state.showAnimation} />
     </div>
   );
 };
