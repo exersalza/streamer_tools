@@ -49,12 +49,11 @@ pub struct StrippedTimer {
     pub name: String,       // name of the timer duh
     pub main: bool,
     pub is_active: bool,
-    pub color: String
+    pub color: String,
 }
 
-
 // TODO:
-//  - Add implementation for recovery/first start of the prgram. eg. add migration scripts 
+//  - Add implementation for recovery/first start of the prgram. eg. add migration scripts
 #[allow(clippy::new_without_default)]
 impl Sql {
     pub fn new() -> Self {
@@ -97,7 +96,6 @@ impl Sql {
     }
 
     pub async fn get_all_timer(&self) -> anyhow::Result<Vec<StrippedTimer>> {
-
         let res = sqlx::query!("SELECT id, name, time, main, is_active, color FROM timer")
             .fetch_all(&self.pool)
             .await?;
@@ -113,7 +111,6 @@ impl Sql {
                 main: item.main.unwrap_or(0) == 1,
                 is_active: item.is_active.unwrap_or(0) == 1,
                 color: item.color.clone().unwrap_or("#000000".into()),
-
             });
         });
 
@@ -133,11 +130,10 @@ impl Sql {
             payload.color
         ).execute(&self.pool).await?;
 
-
         // yanky ass queries
         let _ = sqlx::query!("INSERT INTO timer_go_down_by (id, follow, sub_t1, sub_t2, sub_t3, dono_each_n, dono_n, bits_each_n, bits_n) values (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            id, 
-            payload.increase_times.follow, 
+            id,
+            payload.increase_times.follow,
             payload.increase_times.sub_t1,
             payload.increase_times.sub_t2,
             payload.increase_times.sub_t3,
@@ -159,10 +155,12 @@ impl Sql {
             payload.timer,
             payload.main,
             id
-        ).execute(&self.pool).await?;
+        )
+        .execute(&self.pool)
+        .await?;
 
         let _ = sqlx::query!("UPDATE timer_go_down_by set follow = ?, sub_t1 = ?, sub_t2 = ?, sub_t3 = ?, dono_each_n = ?, dono_n = ?, bits_each_n = ?, bits_n = ? where id = ?",
-            payload.increase_times.follow, 
+            payload.increase_times.follow,
             payload.increase_times.sub_t1,
             payload.increase_times.sub_t2,
             payload.increase_times.sub_t3,
@@ -176,8 +174,13 @@ impl Sql {
     }
 
     pub async fn get_timer_ids(&self) -> anyhow::Result<Vec<String>> {
-        let res = sqlx::query!("select id from timer").fetch_all(&self.pool).await?;
-        let ret = res.iter().map(|value| value.id.clone()).collect::<Vec<String>>();
+        let res = sqlx::query!("select id from timer")
+            .fetch_all(&self.pool)
+            .await?;
+        let ret = res
+            .iter()
+            .map(|value| value.id.clone())
+            .collect::<Vec<String>>();
 
         Ok(ret)
     }
@@ -187,16 +190,27 @@ impl Sql {
     }
 
     pub async fn get_twitch_user_token(&self) -> anyhow::Result<Option<String>> {
-        let token = sqlx::query!("select user_token from twitch_data where id = 1;").fetch_one(&self.pool).await?;
+        let token = sqlx::query!("select user_token from twitch_data where id = 1;")
+            .fetch_one(&self.pool)
+            .await?;
 
         Ok(token.user_token)
     }
 
     pub async fn insert_twitch_token(&self, token: String, refresh: String) -> anyhow::Result<()> {
-        sqlx::query!("INSERT INTO twitch_data (id, user_token, user_refresh)
+        sqlx::query!(
+            "INSERT INTO twitch_data (id, user_token, user_refresh)
 VALUES (?, ?, ?)
 ON CONFLICT (id)
-DO UPDATE SET user_token = ?, user_refresh = ?;",1, token, refresh, token, refresh).execute(&self.pool).await?;
+DO UPDATE SET user_token = ?, user_refresh = ?;",
+            1,
+            token,
+            refresh,
+            token,
+            refresh
+        )
+        .execute(&self.pool)
+        .await?;
 
         Ok(())
     }
@@ -218,19 +232,21 @@ DO UPDATE SET user_token = ?, user_refresh = ?;",1, token, refresh, token, refre
         .execute(&self.pool)
         .await;
 
-
         Ok(())
     }
 
     pub async fn get_refresh_token(&self) -> anyhow::Result<String> {
-        let ret = sqlx::query!("select user_refresh from twitch_data where id = 1").fetch_one(&self.pool).await?;
+        let ret = sqlx::query!("select user_refresh from twitch_data where id = 1")
+            .fetch_one(&self.pool)
+            .await?;
 
         Ok(ret.user_refresh.unwrap_or("".to_string()))
     }
 
-
     pub async fn get_expires_in_oauth(&self) -> anyhow::Result<Option<i64>> {
-        let ret = sqlx::query!("select expires_in from _oauth where id=1").fetch_one(&self.pool).await?;
+        let ret = sqlx::query!("select expires_in from _oauth where id=1")
+            .fetch_one(&self.pool)
+            .await?;
         Ok(ret.expires_in)
     }
 
@@ -239,29 +255,50 @@ DO UPDATE SET user_token = ?, user_refresh = ?;",1, token, refresh, token, refre
     /// # Returns
     /// (token, token_type) -> the token and the type
     pub async fn get_bot_oauth(&self) -> anyhow::Result<(String, String)> {
-        let ret = sqlx::query!("select token, token_type from _oauth where id=1").fetch_one(&self.pool).await?;
+        let ret = sqlx::query!("select token, token_type from _oauth where id=1")
+            .fetch_one(&self.pool)
+            .await?;
 
-       Ok((ret.token.unwrap(), ret.token_type.unwrap()))
+        Ok((ret.token.unwrap(), ret.token_type.unwrap()))
     }
 
-    pub async fn update_oauth_data(&self, access_token: String, expires_in: DateTime<Utc>, token_type: String) -> anyhow::Result<()> {
+    pub async fn update_oauth_data(
+        &self,
+        access_token: String,
+        expires_in: DateTime<Utc>,
+        token_type: String,
+    ) -> anyhow::Result<()> {
         let time = expires_in.timestamp();
 
-        sqlx::query!("
+        sqlx::query!(
+            "
 INSERT INTO _oauth (id, token, expires_in, token_type)
 VALUES (1, ?, ?, ?)
 ON CONFLICT (id)
 DO UPDATE SET token = ?, expires_in = ?, token_type = ?;
-", access_token, time, token_type, access_token, time, token_type).execute(&self.pool).await?; 
+",
+            access_token,
+            time,
+            token_type,
+            access_token,
+            time,
+            token_type
+        )
+        .execute(&self.pool)
+        .await?;
         Ok(())
     }
-
 
     pub async fn update_user(&self, user: &User) -> anyhow::Result<()> {
         let f = self.get_user().await?;
         if f.is_some() {
             dbg!(&f, &user);
-            match sqlx::query!("update user_data set username = ?, display_name = ?, profile_pic = ?, broadcaster_type = ?, id = ?", user.login, user.display_name, user.profile_image_url, user.broadcaster_type, user.id).execute(&self.pool).await {
+            match sqlx::query!("update user_data set username = ?, display_name = ?, profile_pic = ?, broadcaster_type = ?, id = ?", 
+                user.login,
+                user.display_name,
+                user.profile_image_url,
+                user.broadcaster_type,
+                user.id).execute(&self.pool).await {
                 Ok(v) => println!("{}", v.rows_affected()),
                 Err(e) => println!("{}", e),
             }
@@ -269,7 +306,11 @@ DO UPDATE SET token = ?, expires_in = ?, token_type = ?;
             return Ok(());
         }
 
-        sqlx::query!("insert into user_data (id, username, display_name, profile_pic, broadcaster_type) values (?, ?, ?, ?, ?)",user.id, user.login, user.display_name, user.profile_image_url, user.broadcaster_type).execute(&self.pool).await?;
+        sqlx::query!("insert into user_data (id, username, display_name, profile_pic, broadcaster_type) values (?, ?, ?, ?, ?)", user.id,
+            user.login,
+            user.display_name,
+            user.profile_image_url,
+            user.broadcaster_type).execute(&self.pool).await?;
 
         Ok(())
     }
@@ -280,29 +321,37 @@ DO UPDATE SET token = ?, expires_in = ?, token_type = ?;
         if f.is_some() {
             // :tf:
             // this will surely be ok Clueless
-            sqlx::query!("update user_data set username = ?", username).execute(&self.pool).await?;
+            sqlx::query!("update user_data set username = ?", username)
+                .execute(&self.pool)
+                .await?;
             return Ok(());
         }
 
-        sqlx::query!("insert into user_data (username) values (?)", username).execute(&self.pool).await?;
+        sqlx::query!("insert into user_data (username) values (?)", username)
+            .execute(&self.pool)
+            .await?;
 
         Ok(())
     }
 
-
     /// get the user from the db
     pub async fn get_user(&self) -> anyhow::Result<Option<User>> {
         // we just hope that there is only one
-        let f = sqlx::query!("select id, username, display_name, profile_pic, broadcaster_type from user_data").fetch_all(&self.pool).await?;
+        let f = sqlx::query!(
+            "select id, username, display_name, profile_pic, broadcaster_type from user_data"
+        )
+        .fetch_all(&self.pool)
+        .await?;
 
         if let Some(user) = f.last() {
-            return Ok(Some(User { // godspeed 47
+            return Ok(Some(User {
+                // godspeed 47
                 id: user.id.clone().unwrap_or_default().to_string(),
                 login: user.username.clone().unwrap_or_default(),
                 display_name: user.display_name.clone().unwrap_or_default(),
                 broadcaster_type: user.broadcaster_type.clone().unwrap_or_default(),
                 profile_image_url: user.profile_pic.clone().unwrap_or_default(),
-            }))
+            }));
         }
         Ok(None)
     }

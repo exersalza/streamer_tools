@@ -1,7 +1,7 @@
 /// this gonna be a messy file, dw about it
 use parking_lot::Mutex;
 use serde::{Deserialize, Serialize};
-use std::{collections::HashMap, sync::Arc};
+use std::{collections::HashMap, sync::Arc, thread, time::Duration};
 
 use axum::{
     extract::{
@@ -21,7 +21,7 @@ use lazy_static::lazy_static;
 use tokio::sync::broadcast;
 
 use crate::{
-    config::{AM},
+    config::AM,
     sql::{Timer, SQL},
     twitch::update_user_in_db,
     utils::ButtonFunction,
@@ -29,6 +29,7 @@ use crate::{
 
 lazy_static! {
     static ref ws_write_fn: AM<Vec<SplitSink<WebSocket, Message>>> = Arc::new(Mutex::new(vec![]));
+    static ref tick_oneshot: AM<bool> = Arc::new(Mutex::new(true));
 }
 
 const API_VERSION: &str = "v1";
@@ -269,21 +270,39 @@ pub fn create_routes() -> Router {
         .route(&pre("/get_user"), get(get_user))
         .route(&pre("/update_user"), post(update_user))
         .route("/twitch_invalid", get(twitch_invalid))
-        .route(&pre("/ws"), get(ws_stuff))
+        .route("/ws", get(ws_stuff))
         .with_state(RouteStates::default())
 }
 
 async fn handle_socket(socket: WebSocket, state: RouteStates) {
     let (tx, rx) = socket.split();
 
+    let mut oneshot = tick_oneshot.lock();
+
     tokio::spawn(write(tx, state.clone()));
     tokio::spawn(read(rx, state.clone()));
+
+    if *oneshot {
+        *oneshot = false;
+        let state_copy = state.clone();
+
+        tokio::spawn(async move {
+            let mut interval = tokio::time::interval(Duration::from_secs(1));
+            loop {
+                {
+                    let tx = state_copy.tx.lock();
+                    let _ = tx.send("tick".to_string());
+                }
+                interval.tick().await;
+            }
+        });
+    }
 }
 
 async fn read(mut rec: SplitStream<WebSocket>, state: RouteStates) {
     while let Some(msg) = rec.next().await {
         match msg {
-            Ok(Message::Text(text)) => {}
+            Ok(Message::Text(_text)) => {}
             Ok(Message::Close(_)) => {
                 let tx = state.tx.lock();
                 let _ = tx.send(String::from("close"));
@@ -298,18 +317,19 @@ async fn read(mut rec: SplitStream<WebSocket>, state: RouteStates) {
 async fn write(mut sen: SplitSink<WebSocket, Message>, state: RouteStates) {
     let mut rx = state.tx.lock().subscribe();
 
-    if sen.send(Message::Ping(vec![1, 2, 3].into())).await.is_err() {
+    if let Err(err) = sen.send(Message::Ping(vec![1, 2, 3].into())).await {
+        crate::error!("Client did not answer to ping... Error message: {err}");
         return;
     }
 
-    tokio::spawn(async {});
-
+    // this is basically jus sending out whatever is sent on the broadcast channel
     while let Ok(msg) = rx.recv().await {
         if msg == "close" {
             break;
         }
 
-        if sen.send(Message::Text(msg.clone().into())).await.is_err() {
+        if let Err(e) = sen.send(Message::Text(msg.clone().into())).await {
+            dbg!(e);
             break;
         }
     }
