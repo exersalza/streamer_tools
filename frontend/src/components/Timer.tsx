@@ -1,11 +1,10 @@
 import { useEffect, useReducer, useRef, useState } from "preact/hooks";
 import { TimerType } from "../main";
 import { Icons } from "./Icons";
-import { ChangeEvent } from "preact/compat";
-import { API, BACKEND, HOST, parseTime } from "./utils";
-import { HexColorPicker, HexColorInput } from "powerful-color-picker";
+import { API, BACKEND, HOST, PORT } from "./utils";
+import { HexColorPicker } from "powerful-color-picker";
 import { Loading } from "./Loading";
-import { Backpack, Pause, Play, Square } from "lucide-preact";
+import { ClipboardCopy, Pause, Play, Square } from "lucide-preact";
 
 type States = {};
 
@@ -110,6 +109,15 @@ export function Timer(props: TimerProps) {
     <div className={"h-full w-full text-zinc-100 p-2"}>
       <p className={"font-bold text-2xl"}>{state.data?.name}</p>
       <p className={"font-semibold text-zinc-400"}>Uuid {props.uuid}</p>
+      <fieldset className={"border-1 border-gray-700 rounded-lg p-2 max-w-fit pb-4"}>
+        <legend className={""}>Paste this into OBS</legend>
+        <div className={"flex place-items-center bg-gray-700 gap-2 p-2 rounded-lg"}>
+          <a className={" "} href={`/${props.uuid}`}>http://{window.location.hostname === "localhost" ? "localhost:5173" : `${HOST}:${PORT}`}/{props.uuid}</a>
+          <ClipboardCopy className={"inline cursor-pointer"} onClick={() => {
+            navigator.clipboard.writeText(`http://${window.location.hostname === "localhost" ? "localhost:5173" : `${HOST}:${PORT}`}/${props.uuid}`);
+          }} />
+        </div>
+      </fieldset>
       <div className={"flex flex-col gap-4 mt-8"}>
         <div>
           <p className={"text-zinc-100 font-semibold text-xl select-none"}>
@@ -156,10 +164,18 @@ export function Timer(props: TimerProps) {
             />
             <label for={"toggle-timer-white"}>Toggle white background</label>
           </div>
-          <iframe
-            src={`/${props.uuid}`}
-            className={`rounded-lg ring-gray-700 ring-1 ${state.background_white ? "bg-white" : ""}`}
-          />
+          <fieldset className={"rounded-lg ring-gray-700 ring-1 max-w-fit max-h-fit p-2"}>
+            <legend>
+              The current Timer
+            </legend>
+            <iframe
+              src={`/${props.uuid}`}
+              className={`${state.background_white ? "bg-white" : ""}`}
+            />
+          </fieldset>
+          <div>
+            <input placeholder={"Hour"}></input>
+          </div>
         </div>
       </div>
     </div>
@@ -576,6 +592,7 @@ export const TimerWidget = () => {
   const reducer = (prev: TimerCompState, action: Actions) => {
     switch (action.type) {
       case "UpdateTime":
+        console.log("updatetime")
         return { ...prev, time: action.payload.time };
       case "IncTime":
         return { ...prev, time: prev.time + 1 };
@@ -607,7 +624,7 @@ export const TimerWidget = () => {
   };
 
   const [state, dispatch] = useReducer(reducer, {
-    time: 200,
+    time: 200, // oh lol
     loading: false,
     text: { upper: "cool text", lower: "cool text" },
     showAnimation: true,
@@ -656,6 +673,7 @@ export const TimerWidget = () => {
 
         const d = await res.json();
         console.log(d);
+        dispatch({type: "UpdateTime", payload: {time: d[0].timer}})
       },
     );
 

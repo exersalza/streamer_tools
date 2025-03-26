@@ -356,11 +356,12 @@ DO UPDATE SET token = ?, expires_in = ?, token_type = ?;
         Ok(None)
     }
 
-    pub async fn dec_timer(&self, id: String) -> anyhow::Result<()> {
-        sqlx::query!("update timer set time = time - 1 where id = ?", id)
-            .execute(&self.pool)
-            .await?;
-
-        Ok(())
+    pub async fn dec_timer(&self, id: String) -> anyhow::Result<u64> {
+        Ok(
+            sqlx::query!("update timer set time = time - 1 where id = ?", id)
+                .execute(&self.pool)
+                .await?
+                .rows_affected(),
+        )
     }
 }

@@ -8,7 +8,7 @@ use axum::{
         ws::{Message, WebSocket, WebSocketUpgrade},
         Query, State,
     },
-    http::StatusCode,
+    http::{HeaderMap, StatusCode},
     response::{Html, IntoResponse, Redirect, Response},
     routing::{get, post},
     Json, Router,
@@ -107,7 +107,11 @@ async fn get_timer_ids() -> impl IntoResponse {
     serde_json::to_string(&SQL.get_timer_ids().await.unwrap()).unwrap()
 }
 
-async fn ws_stuff(ws: WebSocketUpgrade, State(state): State<RouteStates>) -> Response {
+async fn ws_stuff(
+    ws: WebSocketUpgrade,
+    header: HeaderMap,
+    State(state): State<RouteStates>,
+) -> Response {
     ws.on_upgrade(|socket| handle_socket(socket, state))
 }
 
@@ -316,9 +320,7 @@ async fn read(mut rec: SplitStream<WebSocket>, state: RouteStates) {
         match msg {
             Ok(Message::Text(text)) => match serde_json::from_str::<WsPayload>(&text.to_string()) {
                 Ok(v) => match v.payload {
-                    Action::Dec => {
-                        let _ = SQL.dec_timer(v.id).await;
-                    }
+                    Action::Dec => {}
                 },
                 Err(e) => {
                     let tx = state.tx.lock();
