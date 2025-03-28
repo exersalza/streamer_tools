@@ -1,7 +1,7 @@
 use core::{fmt, str};
 use std::{collections::HashMap, sync::Arc};
 
-use anyhow::Result;
+use anyhow::{bail, Result};
 use futures::{SinkExt, StreamExt};
 use lazy_static::lazy_static;
 use parking_lot::Mutex;
@@ -12,10 +12,7 @@ use tokio_tungstenite::{
     tungstenite::{client::IntoClientRequest, Message},
 };
 
-use crate::{
-    config::{AM},
-    sql::SQL,
-};
+use crate::{config::AM, sql::SQL};
 
 const KEEPALIVE_TIMEOUT: i32 = 10;
 const MSG_LOG_LEN: usize = 256;
@@ -136,7 +133,7 @@ pub async fn get_and_store_oauth() -> Result<()> {
     if let Ok(Some(time)) = SQL.get_expires_in_oauth().await {
         let now = chrono::Utc::now().timestamp();
         // trigger if the token is valid for another day
-        if (time - now) >= (60 * 60 * 24) {
+        if (time - now) >= 86400 {
             return Ok(());
         }
     }
@@ -152,8 +149,22 @@ pub async fn get_and_store_oauth() -> Result<()> {
 }
 
 async fn regit_twitch_events() -> anyhow::Result<()> {
-    let user_id = SQL.get_user().await.unwrap().unwrap().id;
-    let token = SQL.get_twitch_user_token().await.unwrap();
+    let user_id = match SQL.get_user().await.unwrap() {
+        Some(user) => user.id,
+        None => {
+            eprintln!("User has to link on the website");
+            bail!("")
+        }
+    };
+
+    let token = match SQL.get_twitch_user_token().await.unwrap() {
+        Some(t) => t,
+        None => {
+            eprintln!("No token, user has to log in again");
+            bail!("")
+        }
+    };
+    dbg!(&token, &user_id);
     let client_id = crate::config!().twitch.client_id.clone();
 
     let events = vec![""];
@@ -179,7 +190,7 @@ async fn regit_twitch_events() -> anyhow::Result<()> {
         .post("https://api.twitch.tv/helix/eventsub/subscriptions")
         .header("Content-Type", "application/json")
         .header("Client-Id", client_id)
-        .header("Authorization", format!("Bearer {}", token.unwrap()))
+        .header("Authorization", format!("Bearer {}", token))
         .body(serde_json::to_string(&f).unwrap_or("{}".to_string()))
         .send()
         .await?

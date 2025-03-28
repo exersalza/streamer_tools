@@ -1,3 +1,4 @@
+use anyhow::bail;
 /// this gonna be a messy file, dw about it
 use parking_lot::Mutex;
 use serde::{Deserialize, Serialize};
@@ -134,7 +135,7 @@ fn to_x_www_thingies_fuck_of(input: Vec<(&str, String)>) -> String {
     ret
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 pub struct AuthTokenResponseOk {
     pub access_token: String,
     pub expires_in: i32,
@@ -145,7 +146,7 @@ pub struct AuthTokenResponseOk {
 
 struct AuthTokenResponseNotOk {}
 
-async fn refresh_twitch_token() {
+async fn refresh_twitch_token() -> anyhow::Result<Option<String>> {
     let client = reqwest::Client::new();
     let twitch = crate::config!().twitch.clone();
 
@@ -173,10 +174,10 @@ async fn refresh_twitch_token() {
     let f = &res.unwrap().text().await.unwrap_or("{}".to_string());
     let ff: AuthTokenResponseOk = serde_json::from_str(f).unwrap();
 
-    match SQL.update_user_access_token(ff).await {
-        Ok(e) => (),
-        Err(e) => (),
-    }
+    return match SQL.update_user_access_token(ff.clone()).await {
+        Ok(_) => Ok(Some(ff.access_token)),
+        Err(e) => bail!("Failed to update user access token in db. Error: {e}"),
+    };
 }
 
 async fn twitch_auth(Query(query): Query<TwitchAuth>) -> impl IntoResponse {

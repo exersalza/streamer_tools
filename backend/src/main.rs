@@ -7,10 +7,16 @@ pub mod sql;
 pub mod twitch;
 pub mod utils;
 
+use std::sync::Arc;
+
 use axum::{routing::get, Router};
+use lazy_static::lazy_static;
+use parking_lot::Mutex;
 use tokio::net::TcpListener;
 use tower_http::cors::{Any, CorsLayer};
 use twitch::Twitch;
+
+type AM<T> = Arc<Mutex<T>>;
 
 async fn root() -> String {
     "hello".to_string()
