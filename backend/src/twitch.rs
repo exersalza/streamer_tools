@@ -229,15 +229,41 @@ fn start_message_watchdog() {
 
 impl Twitch {
     pub async fn new() -> Self {
-        let _ = get_and_store_oauth().await;
+        let (token, token_type) = if let Ok(tok) = SQL.get_bot_oauth().await {
+            tok
+        } else {
+            ("gibberish".to_string(), "Bearer".to_string())
+        };
+        dbg!(&token, &token_type);
+
+        let is_valid = rew_cl
+            .get("https://id.twitch.tv/oauth2/validate")
+            .header("Authorization", format!("Bearer {token}"))
+            .send()
+            .await
+            .unwrap()
+            .text()
+            .await
+            .unwrap();
+
+        dbg!(is_valid);
+
+        //let _ = get_and_store_oauth().await;
         Self {}
     }
 
     pub async fn connect() {
         // twitch websocket shit
-        let req = "wss://eventsub.wss.twitch.tv/ws"
-            .into_client_request()
-            .unwrap();
+
+        // change the ws url depending on the build, if we're on the debug build, we only want the
+        // localhost websocket server as on the real server the events are not going through
+        let req = (if cfg!(debug_assertions) {
+            "ws://127.0.0.1:8080/ws"
+        } else {
+            "wss://eventsub.wss.twitch.tv/ws"
+        })
+        .into_client_request()
+        .unwrap();
 
         let (mut stream, _res) = connect_async(req).await.unwrap();
         let mut current_threads = vec![];
@@ -266,6 +292,7 @@ impl Twitch {
 
                     let mut lst_msg = last_message.lock();
                     *lst_msg = metadata.message_timestamp;
+                    dbg!(&text);
 
                     match metadata.message_type.as_str() {
                         "session_reconnect" => {}
@@ -286,6 +313,9 @@ impl Twitch {
                         }
                         "session_keepalive" => {
                             crate::debug!("[twitch] heartbeat");
+                        }
+                        "notification" => {
+                            dbg!(&text, "with sex");
                         }
                         _ => {
                             dbg!(&text);

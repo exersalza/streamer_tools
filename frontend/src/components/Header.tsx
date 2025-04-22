@@ -1,16 +1,14 @@
 import { useEffect, useErrorBoundary, useState } from "preact/hooks"
 import { API, HOST } from "./utils";
 import Cookies from 'js-cookie'
-
-interface HeaderProps {
-  connected: boolean
-}
+import { Icon, Settings } from "lucide-preact";
+import { Icons } from "./Icons";
 
 type HeaderStates = {
   username: string
 }
 
-export function Header(props: HeaderProps) {
+export function Header(props: {connected: boolean, toggleSettings: () => void}) {
   const [states, setStates] = useState<HeaderStates>({
     username: ""
   });
@@ -40,6 +38,7 @@ export function Header(props: HeaderProps) {
   return (
     <div className={"h-12 bg-gray-800 flex place-items-center px-2 justify-between border-b-1 border-gray-700"}>
       <p className={"text-zinc-100 font-semibold"}>{states.username}</p>
+      <Settings onClick={props.toggleSettings} />
       <div className={"flex place-items-center gap-2"}>
         <div className={`w-4 h-4 rounded-full ${props.connected ? "bg-green-500" : "bg-red-500"}`}></div>
         <p className={"text-zinc-100"}>{props.connected ? "" : "Not"} Connected</p>

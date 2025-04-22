@@ -9,7 +9,11 @@ pub mod utils;
 
 use std::sync::Arc;
 
-use axum::{routing::get, Router};
+use axum::{
+    response::{Html, IntoResponse, Redirect, Response},
+    routing::get,
+    Router,
+};
 use lazy_static::lazy_static;
 use parking_lot::Mutex;
 use tokio::net::TcpListener;
@@ -18,8 +22,8 @@ use twitch::Twitch;
 
 type AM<T> = Arc<Mutex<T>>;
 
-async fn root() -> String {
-    "hello".to_string()
+async fn root() -> Redirect {
+    Redirect::to("http://localhost:5173")
 }
 
 #[tokio::main]
