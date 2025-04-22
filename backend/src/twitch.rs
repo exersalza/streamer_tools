@@ -130,13 +130,14 @@ pub async fn get_oauth() -> Result<OAuthRes> {
 }
 
 pub async fn get_and_store_oauth() -> Result<()> {
-    if let Ok(Some(time)) = SQL.get_expires_in_oauth().await {
-        let now = chrono::Utc::now().timestamp();
-        // trigger if the token is valid for another day
-        if (time - now) >= 86400 {
-            return Ok(());
-        }
-    }
+    // BUG: can't reload if the timer is not in specific range
+    //if let Ok(Some(time)) = SQL.get_expires_in_oauth().await {
+    //    let now = chrono::Utc::now().timestamp();
+    //    // trigger if the token is valid for another day
+    //    if (time - now) >= 86400 {
+    //        return Ok(());
+    //    }
+    //}
 
     let res = get_oauth().await?;
 
