@@ -1,3 +1,4 @@
+use anyhow::bail;
 use chrono::Utc;
 use chrono_tz::Europe::Berlin;
 use colored::Colorize;
@@ -12,13 +13,16 @@ use std::{fs, path};
 //use tracing_subscriber::Layer;
 
 lazy_static! {
-    // TODO: add cli arg or env for this
-    pub static ref log: Mutex<Log> = Mutex::new(Log::new("all".to_string(), None, None));
+    pub static ref log: Mutex<Log> = Mutex::new(Log::new(
+        std::env::var_os("LC_LOG_LVL").map(|i| i.to_str().unwrap().to_owned()),
+        None,
+        None
+    ));
 }
 
 const MAX_BUF_CAP: usize = 4096;
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum LogLevel {
     Error,
     Warn,
@@ -138,10 +142,25 @@ impl LogLevel {
 }
 
 impl Log {
-    /// Creates a new log element.
-    pub fn new(scope: String, buffer_cap: Option<usize>, log_path: Option<String>) -> Self {
-        let t_scope = Self::parse_scope(scope);
+    /// Creates a new Logging Instance
+    ///
+    /// # Parameters
+    /// - scope -> The scope for the logging, note here you have to define every scope you want.
+    ///     Ex: debug,error <- this will only print log messages that triggered for the debug
+    ///     and error macros
+    /// - buffer_cap -> the max buffer_cap, it will get filled with the messages and then send to
+    ///     the file if its going to overflow
+    /// - log_path -> the destination of the log file
+    ///
+    /// # Returns
+    ///
+    pub fn new(scope: Option<String>, buffer_cap: Option<usize>, log_path: Option<String>) -> Self {
+        let mut scope = scope;
+        if scope.is_none() {
+            scope = Some("all".to_owned());
+        }
 
+        let t_scope = Self::parse_scope(scope.unwrap());
         let buf = LocalBuffer::new(buffer_cap.unwrap_or(MAX_BUF_CAP));
 
         let path = if let Some(p) = log_path {
@@ -175,7 +194,7 @@ impl Log {
     }
 
     /// Writes directly to the buffer
-    pub fn write<T: Display>(&mut self, msg: T) -> usize {
+    pub fn write_to_buf<T: Display>(&mut self, msg: T) -> usize {
         self.buf.write(msg.to_string().as_bytes())
     }
 
@@ -227,9 +246,10 @@ impl Log {
                             buf_length, lines_written
                         ))
                         .build(),
+                    &mut std::io::stdout(),
                 )
             }
-            Err(e) => self.__internal_log(LogBuilder::new().msg(e).build()),
+            Err(e) => self.__internal_log(LogBuilder::new().msg(e).build(), &mut std::io::stdout()),
         };
 
         lines_written
@@ -241,14 +261,33 @@ impl Log {
         format!("{} {}", now.to_string().bright_black(), pre)
     }
 
-    fn parse_log_message<T: Display>(
+    /// This function parses everything and prints it after its done
+    ///
+    ///
+    /// # Arguments
+    ///
+    /// * `msg`
+    /// * `level`
+    /// * `timestamp_format`
+    /// * `target`
+    /// * `writer`
+    ///
+    fn parse_log_message<T, W>(
         &mut self,
         msg: T,
         level: LogLevel,
         timestamp_format: T,
         target: T,
         __internal: bool,
-    ) {
+        writer: &mut W,
+    ) where
+        T: fmt::Display,
+        W: std::io::Write,
+    {
+        if !self.scope.contains(&level) {
+            return;
+        }
+
         let ret = match level {
             LogLevel::Warn => format!(" {}", level.to_string().yellow().bold()),
             LogLevel::Info => format!(" {}", level.to_string().green().bold()),
@@ -269,14 +308,18 @@ impl Log {
             if self.buf.get_cap() <= buf_len + pre.len() {
                 let _ = self.flush();
             }
-            self.write(&pre);
+            self.write_to_buf(&pre);
         }
 
-        print!("{pre}");
+        let _ = write!(writer, "{pre}");
     }
 
     // helper functions
-    pub fn with_builder(&mut self, builder: LogItem) {
+    pub fn with_builder<W: std::io::Write + fmt::Debug>(
+        &mut self,
+        builder: LogItem,
+        write: &mut W,
+    ) {
         if !self.scope.contains(&builder.level) {
             return;
         }
@@ -287,16 +330,18 @@ impl Log {
             builder.timestamp_format,
             builder.target,
             false,
+            write,
         )
     }
 
-    fn __internal_log(&mut self, builder: LogItem) {
+    fn __internal_log<W: std::io::Write>(&mut self, builder: LogItem, write: &mut W) {
         self.parse_log_message(
             builder.msg,
             builder.level,
             builder.timestamp_format,
             builder.target,
             true,
+            write,
         )
     }
 }
@@ -411,7 +456,7 @@ impl LogBuilder {
     ///
     /// lock.with_builder(
     ///     LogBuilder::new()
-    ///        .msg("YooHoo")
+    ///        .msg("hello")
     ///        .level(lufe_core::logs::LogLevel::Info)
     ///        .line(line!())
     ///        .col(column!())
@@ -453,4 +498,13 @@ impl Default for LogBuilder {
     fn default() -> Self {
         Self::new()
     }
+}
+
+// TESTING
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_creation() {}
 }
