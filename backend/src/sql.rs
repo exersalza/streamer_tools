@@ -3,7 +3,7 @@ use std::str::FromStr;
 use chrono::{DateTime, Utc};
 use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
-use sqlx::{Executor, SqlitePool};
+use sqlx::{query, Executor, SqlitePool};
 use uuid::Uuid;
 
 use crate::{routes::AuthTokenResponseOk, twitch::User};
@@ -363,5 +363,39 @@ DO UPDATE SET token = ?, expires_in = ?, token_type = ?;
                 .await?
                 .rows_affected(),
         )
+    }
+
+    pub async fn dec_all_timer(&self) -> anyhow::Result<()> {
+        // types
+        // 0 -> normal decrementing timer
+        // 1 -> incrementing timer
+        sqlx::query!("update timer set time = time - 1 where is_active = 1 and type = 0")
+            .execute(&self.pool)
+            .await?;
+
+        Ok(())
+    }
+
+    pub async fn toggle_timer_active(&self, id: String) -> anyhow::Result<()> {
+        sqlx::query!("update timer set is_active = ~is_active where id = ?", id)
+            .execute(&self.pool)
+            .await?;
+        Ok(())
+    }
+
+    pub async fn set_timer_active(&self, id: String, active: bool) -> anyhow::Result<()> {
+        sqlx::query!("update timer set is_active = ? where id = ?", active, id)
+            .execute(&self.pool)
+            .await?;
+        Ok(())
+    }
+
+    pub async fn get_active_timer(&self) -> anyhow::Result<Vec<String>> {
+        Ok(sqlx::query!("select id from timer where is_active = 1")
+            .fetch_all(&self.pool)
+            .await?
+            .into_iter()
+            .map(|row| row.id)
+            .collect())
     }
 }

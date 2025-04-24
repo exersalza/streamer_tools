@@ -58,8 +58,9 @@ export function Timer(props: TimerProps) {
   const [state, setState] = useState<TimerStates>({
     loading: true,
     data: null,
-    background_white: false
+    background_white: false,
   });
+
 
   useEffect(() => {
     setState((prev) => ({ ...prev, loading: true, data: null }));
@@ -78,12 +79,14 @@ export function Timer(props: TimerProps) {
   const buttonOnClick = (e: MouseEvent) => {
     const targetId = (e.target as HTMLButtonElement).id.split("-")[2];
 
+
     fetch(API + "/post_button_pressed", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
+        id: props.uuid,
         function: targetId,
       }),
     }).then(async (res) => {
@@ -125,13 +128,12 @@ export function Timer(props: TimerProps) {
           </p>
           <div className={"flex gap-2 "}>
             {[
-              ["M5", "-5"],
-              ["M1", "-1"],
+              ["M5", "-5 Min"],
+              ["M1", "-1 Min"],
               ["Stop", <Square className={"pointer-events-none"} />],
               ["Play", <Play className={"pointer-events-none"} />],
-              ["Pause", <Pause className={"pointer-events-none"} />],
-              ["P1", "+1"],
-              ["P5", "+5"],
+              ["P1", "+1 Min"],
+              ["P5", "+5 Min"],
             ].map(([type, value, ...classnames]) => (
               <button
                 key={type}
@@ -164,14 +166,16 @@ export function Timer(props: TimerProps) {
             />
             <label for={"toggle-timer-white"}>Toggle white background</label>
           </div>
-          <fieldset className={"rounded-lg ring-gray-700 ring-1 max-w-fit max-h-fit p-2"}>
+          <fieldset className={"border-1 border-gray-700 rounded-lg p-2 max-w-fit pb-4"}>
             <legend>
               The current Timer
             </legend>
-            <iframe
-              src={`/${props.uuid}`}
-              className={`${state.background_white ? "bg-white" : ""}`}
-            />
+            <div>
+              <iframe
+                src={`/${props.uuid}`}
+                className={`${state.background_white ? "bg-white" : ""}`}
+              />
+            </div>
           </fieldset>
           <div>
             <input placeholder={"Hour"}></input>
@@ -650,10 +654,10 @@ export const TimerWidget = () => {
     }
 
     socket.onmessage = (msg: MessageEvent) => {
-      const data = msg.data;
+      const data = JSON.parse(msg.data);
       console.log(data)
 
-      if (data === "tick") {
+      if (data.type === "tick") {
         dispatch({ type: "DecTime" });
         socket.send(JSON.stringify({ id: location.pathname.replace("/", ""), payload: { action: "Dec" } }))
       }
@@ -673,7 +677,7 @@ export const TimerWidget = () => {
 
         const d = await res.json();
         console.log(d);
-        dispatch({type: "UpdateTime", payload: {time: d[0].timer}})
+        dispatch({ type: "UpdateTime", payload: { time: d[0].timer } })
       },
     );
 

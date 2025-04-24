@@ -2,6 +2,7 @@ use anyhow::bail;
 /// this gonna be a messy file, dw about it
 use parking_lot::Mutex;
 use serde::{Deserialize, Serialize};
+use serde_json::json;
 use std::{collections::HashMap, sync::Arc, thread, time::Duration};
 
 use axum::{
@@ -19,7 +20,7 @@ use futures_util::{
     stream::{SplitSink, SplitStream, StreamExt},
 };
 use lazy_static::lazy_static;
-use tokio::sync::broadcast;
+use tokio::sync::{broadcast, mpsc::Sender};
 
 use crate::{
     config::AM,
@@ -29,7 +30,10 @@ use crate::{
 };
 
 lazy_static! {
-    static ref ws_write_fn: AM<Vec<SplitSink<WebSocket, Message>>> = Arc::new(Mutex::new(vec![]));
+    pub static ref ws_write_fn: AM<broadcast::Sender<String>> = Arc::new(Mutex::new({
+        let (tx, _) = broadcast::channel(254);
+        tx
+    }));
     static ref tick_oneshot: AM<bool> = Arc::new(Mutex::new(true));
 }
 
@@ -42,6 +46,7 @@ pub struct FetchTimer {
 
 #[derive(Deserialize, Clone, Debug)]
 pub struct ButtonPressed {
+    id: String,
     function: ButtonFunction,
 }
 
@@ -52,7 +57,8 @@ pub struct RouteStates {
 
 impl RouteStates {
     pub fn new() -> Self {
-        let (tx, _rx) = broadcast::channel(254);
+        let (tx, _) = broadcast::channel(254);
+
         Self {
             tx: Arc::new(Mutex::new(tx)),
         }
@@ -96,12 +102,31 @@ async fn post_create_timer(Json(payload): Json<Timer>) -> impl IntoResponse {
 }
 
 async fn post_button_pressed(Json(payload): Json<ButtonPressed>) -> impl IntoResponse {
-    dbg!(payload);
-    "cool"
+    dbg!(&payload);
+
+    match payload.function {
+        ButtonFunction::M5 => todo!(),
+        ButtonFunction::M1 => todo!(),
+        ButtonFunction::Stop => SQL.set_timer_active(payload.id, false).await,
+        ButtonFunction::Play => SQL.set_timer_active(payload.id, true).await,
+        ButtonFunction::P1 => todo!(),
+        ButtonFunction::P5 => todo!(),
+    };
+
+    "passed"
 }
 
 async fn post_update_timer(Json(payload): Json<Timer>) -> impl IntoResponse {
     ""
+}
+
+#[derive(Deserialize)]
+struct TimerActive {
+    id: String,
+}
+
+async fn post_toggle_timer_active(Json(payload): Json<TimerActive>) -> impl IntoResponse {
+    format!("{:?}", SQL.toggle_timer_active(payload.id).await)
 }
 
 async fn get_timer_ids() -> impl IntoResponse {
@@ -261,6 +286,14 @@ async fn update_user(Json(payload): Json<UpdateUser>) -> impl IntoResponse {
     (StatusCode::OK, String::new())
 }
 
+async fn get_active_timers() -> impl IntoResponse {
+    if let Ok(d) = SQL.get_active_timer().await {
+        return serde_json::to_string(&d).unwrap_or_default();
+    }
+
+    String::from("borke")
+}
+
 pub fn create_routes() -> Router {
     Router::new()
         .route(&pre("/get_twitch_username"), get(get_twitch_username))
@@ -269,11 +302,17 @@ pub fn create_routes() -> Router {
         .route(&pre("/get_timer_names"), get(get_timer_ids))
         .route(&pre("/post_create_timer"), post(post_create_timer))
         .route(&pre("/post_update_timer"), post(post_update_timer))
+        .route(
+            &pre("/post_toggle_timer_active"),
+            post(post_toggle_timer_active),
+        )
         .route(&pre("/post_button_pressed"), post(post_button_pressed))
         .route(&pre("/twitch_auth"), get(twitch_auth))
         .route(&pre("/is_connected_to_twitch"), get(connected_to_twitch))
         .route(&pre("/get_user"), get(get_user))
         .route(&pre("/update_user"), post(update_user))
+        .route(&pre("/ping"), get(async || "pong"))
+        .route(&pre("/get_active_timers"), get(get_active_timers))
         .route("/twitch_invalid", get(twitch_invalid))
         .route("/ws", get(ws_stuff))
         .with_state(RouteStates::default())
@@ -283,9 +322,10 @@ async fn handle_socket(socket: WebSocket, state: RouteStates) {
     let (tx, rx) = socket.split();
 
     let mut oneshot = tick_oneshot.lock();
+    let id = uuid::Uuid::new_v4();
 
-    tokio::spawn(write(tx, state.clone()));
-    tokio::spawn(read(rx, state.clone()));
+    tokio::spawn(write(tx, state.clone(), id));
+    tokio::spawn(read(rx, state.clone(), id));
 
     if *oneshot {
         *oneshot = false;
@@ -294,10 +334,19 @@ async fn handle_socket(socket: WebSocket, state: RouteStates) {
         tokio::spawn(async move {
             let mut interval = tokio::time::interval(Duration::from_secs(1));
             loop {
+                let data = (SQL.get_active_timer().await).unwrap_or_default();
+
+                let payload_data = json!({
+                    "type": "tick",
+                    "payload": data
+                });
+
                 {
                     let tx = state_copy.tx.lock();
-                    let _ = tx.send("tick".to_string());
+                    let _ = tx.send(payload_data.to_string());
                 }
+
+                let _ = SQL.dec_all_timer().await;
                 interval.tick().await;
             }
         });
@@ -308,6 +357,7 @@ async fn handle_socket(socket: WebSocket, state: RouteStates) {
 #[serde(tag = "action")]
 enum Action {
     Dec,
+    Inc,
 }
 
 #[derive(Deserialize, Debug)]
@@ -316,12 +366,13 @@ struct WsPayload {
     payload: Action,
 }
 
-async fn read(mut rec: SplitStream<WebSocket>, state: RouteStates) {
+async fn read(mut rec: SplitStream<WebSocket>, state: RouteStates, id: uuid::Uuid) {
     while let Some(msg) = rec.next().await {
         match msg {
             Ok(Message::Text(text)) => match serde_json::from_str::<WsPayload>(&text.to_string()) {
                 Ok(v) => match v.payload {
                     Action::Dec => {}
+                    Action::Inc => {}
                 },
                 Err(e) => {
                     let tx = state.tx.lock();
@@ -334,7 +385,7 @@ async fn read(mut rec: SplitStream<WebSocket>, state: RouteStates) {
             },
             Ok(Message::Close(_)) => {
                 let tx = state.tx.lock();
-                let _ = tx.send(String::from("close"));
+                let _ = tx.send(format!("close-{id}"));
                 break;
             }
             Err(e) => println!("{e:?}"),
@@ -343,7 +394,7 @@ async fn read(mut rec: SplitStream<WebSocket>, state: RouteStates) {
     }
 }
 
-async fn write(mut sen: SplitSink<WebSocket, Message>, state: RouteStates) {
+async fn write(mut sen: SplitSink<WebSocket, Message>, state: RouteStates, id: uuid::Uuid) {
     let mut rx = state.tx.lock().subscribe();
 
     if let Err(err) = sen.send(Message::Ping(vec![1, 2, 3].into())).await {
@@ -353,7 +404,7 @@ async fn write(mut sen: SplitSink<WebSocket, Message>, state: RouteStates) {
 
     // this is basically jus sending out whatever is sent on the broadcast channel
     while let Ok(msg) = rx.recv().await {
-        if msg == "close" {
+        if msg == format!("close-{id}") {
             break;
         }
 

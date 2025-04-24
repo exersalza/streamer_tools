@@ -12,7 +12,7 @@ use tokio_tungstenite::{
     tungstenite::{client::IntoClientRequest, Message},
 };
 
-use crate::{config::AM, sql::SQL};
+use crate::{config::AM, debug, routes::ws_write_fn, sql::SQL};
 
 const KEEPALIVE_TIMEOUT: i32 = 10;
 const MSG_LOG_LEN: usize = 256;
@@ -227,6 +227,41 @@ fn start_message_watchdog() {
     });
 }
 
+/// Filter the big array out
+#[derive(Serialize, Deserialize, Debug)]
+struct NotifPayload {
+    payload: NotificationPayload,
+}
+
+/// payload contents
+#[derive(Serialize, Deserialize, Debug)]
+struct NotificationPayload {
+    subscription: SubNotifPayload,
+    event: NotifEventData,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+struct SubNotifPayload {
+    id: String,
+    status: String,
+    r#type: String,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+struct NotifEventData {
+    broadcaster_user_id: String,
+    broadcaster_user_login: String,
+    broadcaster_user_name: String,
+    followed_at: String,
+    user_id: String,
+    user_login: String,
+    user_name: String,
+}
+
+fn handle_notification(text: String) {
+    let parsed: NotifPayload = serde_json::from_str(&text).unwrap();
+}
+
 impl Twitch {
     pub async fn new() -> Self {
         let (token, token_type) = if let Ok(tok) = SQL.get_bot_oauth().await {
@@ -252,7 +287,7 @@ impl Twitch {
         Self {}
     }
 
-    pub async fn connect() {
+    pub async fn connect() -> anyhow::Result<()> {
         // twitch websocket shit
 
         // change the ws url depending on the build, if we're on the debug build, we only want the
@@ -265,13 +300,13 @@ impl Twitch {
         .into_client_request()
         .unwrap();
 
-        let (mut stream, _res) = connect_async(req).await.unwrap();
+        let (mut stream, _res) = connect_async(req).await?;
         let mut current_threads = vec![];
 
         start_message_watchdog();
         // Receive messages
         while let Some(msg) = stream.next().await {
-            match msg.unwrap().clone() {
+            match msg?.clone() {
                 Message::Text(text) => {
                     let metadata: MetaData = serde_json::from_str::<InitResponse>(
                         str::from_utf8(text.as_bytes()).unwrap(),
@@ -292,7 +327,6 @@ impl Twitch {
 
                     let mut lst_msg = last_message.lock();
                     *lst_msg = metadata.message_timestamp;
-                    dbg!(&text);
 
                     match metadata.message_type.as_str() {
                         "session_reconnect" => {}
@@ -314,9 +348,7 @@ impl Twitch {
                         "session_keepalive" => {
                             crate::debug!("[twitch] heartbeat");
                         }
-                        "notification" => {
-                            dbg!(&text, "with sex");
-                        }
+                        "notification" => handle_notification(text.to_string()),
                         _ => {
                             dbg!(&text);
                         }
@@ -328,14 +360,13 @@ impl Twitch {
                     break;
                 }
                 Message::Ping(e) => {
-                    crate::debug!("[twitch] received ping...");
                     let _ = stream.send(Message::Pong(e)).await;
-                    crate::debug!("[twitch] sent pong...");
                 }
                 _ => {
                     dbg!("some default");
                 }
             }
         }
+        Ok(())
     }
 }

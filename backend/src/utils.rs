@@ -16,7 +16,6 @@ pub enum ButtonFunction {
     M1,
     Stop,
     Play,
-    Pause,
     P1,
     P5,
 }
@@ -28,7 +27,6 @@ impl From<String> for ButtonFunction {
             "M1" => ButtonFunction::M1,
             "Stop" => ButtonFunction::Stop,
             "Play" => ButtonFunction::Play,
-            "Pause" => ButtonFunction::Pause,
             "P1" => ButtonFunction::P1,
             "P5" => ButtonFunction::P5,
             _ => ButtonFunction::Stop,
