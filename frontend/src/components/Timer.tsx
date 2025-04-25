@@ -115,7 +115,7 @@ export function Timer(props: TimerProps) {
       <fieldset className={"border-1 border-gray-700 rounded-lg p-2 max-w-fit pb-4"}>
         <legend className={""}>Paste this into OBS</legend>
         <div className={"flex place-items-center bg-gray-700 gap-2 p-2 rounded-lg"}>
-          <a className={" "} href={`/${props.uuid}`}>http://{window.location.hostname === "localhost" ? "localhost:5173" : `${HOST}:${PORT}`}/{props.uuid}</a>
+          <a className={" "} target={"_blank"} href={`/${props.uuid}`}>http://{window.location.hostname === "localhost" ? "localhost:5173" : `${HOST}:${PORT}`}/{props.uuid}</a>
           <ClipboardCopy className={"inline cursor-pointer"} onClick={() => {
             navigator.clipboard.writeText(`http://${window.location.hostname === "localhost" ? "localhost:5173" : `${HOST}:${PORT}`}/${props.uuid}`);
           }} />
@@ -580,6 +580,11 @@ type TimerCompState = {
   };
 };
 
+type getTimerRes = {
+  payload: string[],
+  type: "tick"
+}
+
 type Actions = {
   type:
   | "UpdateTime"
@@ -641,6 +646,10 @@ export const TimerWidget = () => {
     },
   });
 
+  const getId = () => {
+    return location.pathname.replace("/", "")
+  }
+
   const connectWebsocket = () => {
     const socket = new WebSocket(BACKEND + "/ws");
 
@@ -651,13 +660,14 @@ export const TimerWidget = () => {
 
     socket.onopen = () => {
       console.debug("[Websocket] opened connection...");
+      socket.send(JSON.stringify({ id: getId(), payload: { action: "Reg" } }));
     }
 
     socket.onmessage = (msg: MessageEvent) => {
-      const data = JSON.parse(msg.data);
-      console.log(data)
+      const data: getTimerRes = JSON.parse(msg.data);
 
-      if (data.type === "tick") {
+      // eah, check if timer is active in db and "tick" if it is
+      if (data.type === "tick" && data.payload.includes(getId())) {
         dispatch({ type: "DecTime" });
         socket.send(JSON.stringify({ id: location.pathname.replace("/", ""), payload: { action: "Dec" } }))
       }
@@ -668,7 +678,7 @@ export const TimerWidget = () => {
     // init websocket stuff here
     connectWebsocket();
 
-    fetch(API + `/get_timer?uuid=${location.pathname.replace("/", "")}`).then(
+    fetch(API + `/get_timer?uuid=${getId()}`).then(
       async (res) => {
         if (!res.ok) {
           console.error(await res.text());
@@ -676,7 +686,6 @@ export const TimerWidget = () => {
         }
 
         const d = await res.json();
-        console.log(d);
         dispatch({ type: "UpdateTime", payload: { time: d[0].timer } })
       },
     );

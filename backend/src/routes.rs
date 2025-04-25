@@ -20,7 +20,7 @@ use futures_util::{
     stream::{SplitSink, SplitStream, StreamExt},
 };
 use lazy_static::lazy_static;
-use tokio::sync::{broadcast, mpsc::Sender};
+use tokio::sync::broadcast;
 
 use crate::{
     config::AM,
@@ -35,6 +35,7 @@ lazy_static! {
         tx
     }));
     static ref tick_oneshot: AM<bool> = Arc::new(Mutex::new(true));
+    pub static ref running_timer: AM<HashMap<String, i32>> = Arc::new(Mutex::new(HashMap::new()));
 }
 
 const API_VERSION: &str = "v1";
@@ -104,7 +105,7 @@ async fn post_create_timer(Json(payload): Json<Timer>) -> impl IntoResponse {
 async fn post_button_pressed(Json(payload): Json<ButtonPressed>) -> impl IntoResponse {
     dbg!(&payload);
 
-    match payload.function {
+    let _ = match payload.function {
         ButtonFunction::M5 => todo!(),
         ButtonFunction::M1 => todo!(),
         ButtonFunction::Stop => SQL.set_timer_active(payload.id, false).await,
@@ -358,6 +359,8 @@ async fn handle_socket(socket: WebSocket, state: RouteStates) {
 enum Action {
     Dec,
     Inc,
+    Reg,
+    UnReg,
 }
 
 #[derive(Deserialize, Debug)]
@@ -373,6 +376,27 @@ async fn read(mut rec: SplitStream<WebSocket>, state: RouteStates, id: uuid::Uui
                 Ok(v) => match v.payload {
                     Action::Dec => {}
                     Action::Inc => {}
+                    // this keeps track of the id counts so we know when to update an id and when
+                    // not to, hopefully i'll still know when i update the update mechanism
+                    Action::Reg => {
+                        let mut lock = running_timer.lock();
+
+                        if let Some(f) = lock.get_mut(&v.id) {
+                            *f += 1;
+                            return;
+                        }
+
+                        lock.insert(v.id.clone(), 1);
+                    }
+                    Action::UnReg => {
+                        let mut lock = running_timer.lock();
+
+                        if let Some(f) = lock.get_mut(&v.id) {
+                            if *f > 0 {
+                                *f -= 1;
+                            }
+                        }
+                    }
                 },
                 Err(e) => {
                     let tx = state.tx.lock();

@@ -6,7 +6,10 @@ use serde::{Deserialize, Serialize};
 use sqlx::{query, Executor, SqlitePool};
 use uuid::Uuid;
 
-use crate::{routes::AuthTokenResponseOk, twitch::User};
+use crate::{
+    routes::{running_timer, AuthTokenResponseOk},
+    twitch::User,
+};
 
 lazy_static! {
     pub static ref SQL: Sql = Sql::new();
@@ -369,9 +372,44 @@ DO UPDATE SET token = ?, expires_in = ?, token_type = ?;
         // types
         // 0 -> normal decrementing timer
         // 1 -> incrementing timer
-        sqlx::query!("update timer set time = time - 1 where is_active = 1 and type = 0")
-            .execute(&self.pool)
-            .await?;
+
+        #[allow(non_snake_case)]
+        let mut special_query_thingy_idk_how_to_caLL_this = vec![];
+
+        {
+            let lock = running_timer.lock();
+            let mut ret = vec![];
+
+            for (key, value) in lock.clone().into_iter() {
+                if value <= 0 {
+                    continue;
+                }
+
+                ret.push(key);
+            }
+
+            for i in ret {
+                special_query_thingy_idk_how_to_caLL_this.push(i);
+            }
+        }
+
+        let query = format!(
+            "update timer set time = time - 1 where is_active = 1 and type = 0 and id in ({})",
+            special_query_thingy_idk_how_to_caLL_this
+                .clone()
+                .iter()
+                .map(|_| "?")
+                .collect::<Vec<_>>()
+                .join(",")
+        );
+
+        let mut thingy = sqlx::query(&query);
+
+        for i in &special_query_thingy_idk_how_to_caLL_this {
+            thingy = thingy.bind(i);
+        }
+
+        thingy.execute(&self.pool).await?;
 
         Ok(())
     }
