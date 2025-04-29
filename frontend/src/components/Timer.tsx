@@ -581,7 +581,7 @@ type TimerCompState = {
 };
 
 type getTimerRes = {
-  payload: string[],
+  payload: string[][],
   type: "tick"
 }
 
@@ -601,7 +601,6 @@ export const TimerWidget = () => {
   const reducer = (prev: TimerCompState, action: Actions) => {
     switch (action.type) {
       case "UpdateTime":
-        console.log("updatetime")
         return { ...prev, time: action.payload.time };
       case "IncTime":
         return { ...prev, time: prev.time + 1 };
@@ -666,10 +665,17 @@ export const TimerWidget = () => {
     socket.onmessage = (msg: MessageEvent) => {
       const data: getTimerRes = JSON.parse(msg.data);
 
+      const timerData = Object.fromEntries(data.payload);
+      const id = getId();
+
       // eah, check if timer is active in db and "tick" if it is
-      if (data.type === "tick" && data.payload.includes(getId())) {
-        dispatch({ type: "DecTime" });
-        socket.send(JSON.stringify({ id: location.pathname.replace("/", ""), payload: { action: "Dec" } }))
+      if (data.type === "tick" && Object.keys(timerData).includes(id)) {
+        //dispatch({ type: "DecTime" });
+        
+        dispatch({type: "UpdateTime", payload: {time: timerData[id]}});
+
+        // NOTE: currently we handle this on the backend
+        //socket.send(JSON.stringify({ id: location.pathname.replace("/", ""), payload: { action: "Dec" } }))
       }
     }
   }

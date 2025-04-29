@@ -428,12 +428,27 @@ DO UPDATE SET token = ?, expires_in = ?, token_type = ?;
         Ok(())
     }
 
-    pub async fn get_active_timer(&self) -> anyhow::Result<Vec<String>> {
-        Ok(sqlx::query!("select id from timer where is_active = 1")
+    pub async fn get_active_timer(&self) -> anyhow::Result<Vec<(String, String)>> {
+        let mut ret = vec![];
+        for row in sqlx::query!("select id, time from timer where is_active = 1")
             .fetch_all(&self.pool)
             .await?
-            .into_iter()
-            .map(|row| row.id)
-            .collect())
+        {
+            ret.push((row.id, row.time.unwrap_or(0).to_string()))
+        }
+
+        Ok(ret)
+    }
+
+    pub async fn add_time_to_timer(&self, id: String, time_to_add: i32) -> anyhow::Result<()> {
+        sqlx::query!(
+            "update timer set time = time + ? where id =? ",
+            time_to_add,
+            id
+        )
+        .execute(&self.pool)
+        .await?;
+
+        Ok(())
     }
 }

@@ -9,19 +9,16 @@ pub mod utils;
 
 use std::sync::Arc;
 
-use axum::{
-    response::{Html, IntoResponse, Redirect, Response},
-    routing::get,
-    Router,
-};
-use lazy_static::lazy_static;
+use axum::{response::Redirect, routing::get, Router};
 use parking_lot::Mutex;
-use sql::SQL;
-use tokio::{net::TcpListener, time::Interval};
+use tokio::net::TcpListener;
 use tower_http::cors::{Any, CorsLayer};
 use twitch::Twitch;
 
 type AM<T> = Arc<Mutex<T>>;
+
+const RECONNECT_ATTEMPTS: i32 = 3;
+const RECONNECT_AFTER: u64 = 30; // in seconds
 
 async fn root() -> Redirect {
     Redirect::to("http://localhost:5173")
@@ -45,12 +42,26 @@ async fn main() {
 
     // connect to twitch websocket to receive events and stuff
     tokio::spawn(async {
-        let mut i = tokio::time::interval(tokio::time::Duration::from_secs(30));
+        let mut i = tokio::time::interval(tokio::time::Duration::from_secs(RECONNECT_AFTER));
+        let mut attempts = 0;
 
         loop {
+            if attempts >= RECONNECT_ATTEMPTS {
+                crate::error!("Failed after {RECONNECT_ATTEMPTS}, wont try again until restart...");
+                break;
+            }
             crate::debug!("connecting to websocket...");
-            if let Err(e) = twitch::Twitch::connect().await {
-                crate::error!("Websocket failed unexpectly. Error code: {e}. trying to reconnect in 30 seconds...");
+
+            match twitch::Twitch::connect().await {
+                Err(e) => {
+                    attempts += 1;
+                    crate::error!(
+                        "Websocket failed unexpectly. Error code: {e}. trying to reconnect in 30 seconds..."
+                    );
+                }
+                Ok(_) => {
+                    attempts = 0;
+                }
             }
             i.tick().await;
         }

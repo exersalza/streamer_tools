@@ -104,17 +104,21 @@ async fn post_create_timer(Json(payload): Json<Timer>) -> impl IntoResponse {
 
 async fn post_button_pressed(Json(payload): Json<ButtonPressed>) -> impl IntoResponse {
     dbg!(&payload);
+    let id = payload.id.clone();
 
     let _ = match payload.function {
-        ButtonFunction::M5 => todo!(),
-        ButtonFunction::M1 => todo!(),
+        ButtonFunction::M5 => SQL.add_time_to_timer(payload.id, -300).await,
+        ButtonFunction::M1 => SQL.add_time_to_timer(payload.id, -60).await,
         ButtonFunction::Stop => SQL.set_timer_active(payload.id, false).await,
         ButtonFunction::Play => SQL.set_timer_active(payload.id, true).await,
-        ButtonFunction::P1 => todo!(),
-        ButtonFunction::P5 => todo!(),
+        ButtonFunction::P1 => SQL.add_time_to_timer(payload.id, 60).await,
+        ButtonFunction::P5 => SQL.add_time_to_timer(payload.id, 300).await,
     };
 
-    "passed"
+    match SQL.get_timer(id).await {
+        Ok(e) => e[0].timer.unwrap_or(0).to_string(),
+        Err(f) => f.to_string(),
+    }
 }
 
 async fn post_update_timer(Json(payload): Json<Timer>) -> impl IntoResponse {
