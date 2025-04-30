@@ -224,6 +224,9 @@ impl Log {
 
     /// flushes everything to the file
     fn flush(&mut self) -> usize {
+        return 0; // disable log file temp
+
+        #[allow(unreachable_code)]
         let buf: &mut [u8] = &mut [0; MAX_BUF_CAP];
         let buf_length = self.buf.get_buf_length();
         let mut lines_written = 0;

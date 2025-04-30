@@ -1,7 +1,7 @@
 import { useEffect, useReducer, useRef, useState } from "preact/hooks";
 import { TimerType } from "../main";
 import { Icons } from "./Icons";
-import { API, BACKEND, HOST, PORT } from "./utils";
+import { API, BACKEND, HOST, PORT, RECONNECT_AFTER } from "./utils";
 import { HexColorPicker } from "powerful-color-picker";
 import { Loading } from "./Loading";
 import { ClipboardCopy, Pause, Play, Square } from "lucide-preact";
@@ -36,7 +36,11 @@ export function TimerButton(props: TimerButtonProps) {
                 : "var(--color-zinc-100)",
           }}
         >
-          {Icons.clock}
+          {["bmc"].includes(props.data.name) ? (
+            <img className={"size-6"} src="https://cdn.7tv.app/emote/01GY6Y9T6G000CX7G8QSR9TRP1/2x.avif" />
+          ) : (
+            Icons.clock
+          )}
         </span>{" "}
         {props.data.name}
       </p>
@@ -61,7 +65,6 @@ export function Timer(props: TimerProps) {
     background_white: false,
   });
 
-
   useEffect(() => {
     setState((prev) => ({ ...prev, loading: true, data: null }));
 
@@ -72,13 +75,16 @@ export function Timer(props: TimerProps) {
       }
 
       const data = await res.json();
-      setState((prev) => ({ ...prev, loading: false, data: data[0] as TimerType }));
+      setState((prev) => ({
+        ...prev,
+        loading: false,
+        data: data[0] as TimerType,
+      }));
     });
   }, [props.uuid]);
 
   const buttonOnClick = (e: MouseEvent) => {
     const targetId = (e.target as HTMLButtonElement).id.split("-")[2];
-
 
     fetch(API + "/post_button_pressed", {
       method: "POST",
@@ -112,13 +118,28 @@ export function Timer(props: TimerProps) {
     <div className={"h-full w-full text-zinc-100 p-2"}>
       <p className={"font-bold text-2xl"}>{state.data?.name}</p>
       <p className={"font-semibold text-zinc-400"}>Uuid {props.uuid}</p>
-      <fieldset className={"border-1 border-gray-700 rounded-lg p-2 max-w-fit pb-4"}>
+      <fieldset
+        className={"border-1 border-gray-700 rounded-lg p-2 max-w-fit pb-4"}
+      >
         <legend className={""}>Paste this into OBS</legend>
-        <div className={"flex place-items-center bg-gray-700 gap-2 p-2 rounded-lg"}>
-          <a className={" "} target={"_blank"} href={`/${props.uuid}`}>http://{window.location.hostname === "localhost" ? "localhost:5173" : `${HOST}:${PORT}`}/{props.uuid}</a>
-          <ClipboardCopy className={"inline cursor-pointer"} onClick={() => {
-            navigator.clipboard.writeText(`http://${window.location.hostname === "localhost" ? "localhost:5173" : `${HOST}:${PORT}`}/${props.uuid}`);
-          }} />
+        <div
+          className={"flex place-items-center bg-gray-700 gap-2 p-2 rounded-lg"}
+        >
+          <a className={" "} target={"_blank"} href={`/${props.uuid}`}>
+            http://
+            {window.location.hostname === "localhost"
+              ? "localhost:5173"
+              : `${HOST}:${PORT}`}
+            /{props.uuid}
+          </a>
+          <ClipboardCopy
+            className={"inline cursor-pointer"}
+            onClick={() => {
+              navigator.clipboard.writeText(
+                `http://${window.location.hostname === "localhost" ? "localhost:5173" : `${HOST}:${PORT}`}/${props.uuid}`,
+              );
+            }}
+          />
         </div>
       </fieldset>
       <div className={"flex flex-col gap-4 mt-8"}>
@@ -141,11 +162,12 @@ export function Timer(props: TimerProps) {
                 onClick={buttonOnClick}
                 className={`
                   transition-all min-w-10 text-zinc-400 rounded-lg bg-gray-800 p-2 cursor-pointer border border-gray-700
-                  ${type === "Stop"
-                    ? "hover:text-red-500"
-                    : type === "Play"
-                      ? "hover:text-green-500"
-                      : "hover:text-zinc-100"
+                  ${
+                    type === "Stop"
+                      ? "hover:text-red-500"
+                      : type === "Play"
+                        ? "hover:text-green-500"
+                        : "hover:text-zinc-100"
                   }
                   ${classnames.join(" ")}
                 `}
@@ -162,14 +184,19 @@ export function Timer(props: TimerProps) {
               className={"text-white"}
               type="checkbox"
               checked={state.background_white}
-              onChange={() => { setState((prev) => ({ ...prev, background_white: !prev.background_white })) }}
+              onChange={() => {
+                setState((prev) => ({
+                  ...prev,
+                  background_white: !prev.background_white,
+                }));
+              }}
             />
             <label for={"toggle-timer-white"}>Toggle white background</label>
           </div>
-          <fieldset className={"border-1 border-gray-700 rounded-lg p-2 max-w-fit pb-4"}>
-            <legend>
-              The current Timer
-            </legend>
+          <fieldset
+            className={"border-1 border-gray-700 rounded-lg p-2 max-w-fit pb-4"}
+          >
+            <legend>The current Timer</legend>
             <div>
               <iframe
                 src={`/${props.uuid}`}
@@ -568,6 +595,7 @@ type TimerCompState = {
   loading: boolean;
   timerPaused: boolean;
   showAnimation: boolean;
+  wsRestart: number,
   text: {
     upper: string;
     lower: string;
@@ -581,21 +609,25 @@ type TimerCompState = {
 };
 
 type getTimerRes = {
-  payload: string[][],
-  type: "tick"
-}
+  payload: string[][] | string;
+  type: "tick" | "update";
+};
 
 type Actions = {
   type:
-  | "UpdateTime"
-  | "IncTime"
-  | "DecTime"
-  | "TogglePause"
-  | "UpdateText"
-  | "ToggleAnimate"
-  | "ToggleLoading";
+    | "UpdateTime"
+    | "IncTime"
+    | "DecTime"
+    | "TogglePause"
+    | "UpdateText"
+    | "ToggleAnimate"
+    | "ToggleLoading"
+    | "IncWsRestart"
+    | "ResWsRestart";
   payload?: any;
 };
+
+let socket: WebSocket | null = null;
 
 export const TimerWidget = () => {
   const reducer = (prev: TimerCompState, action: Actions) => {
@@ -626,6 +658,18 @@ export const TimerWidget = () => {
           ...prev,
           loading: !prev.loading,
         };
+
+      case "IncWsRestart":
+        return {
+          ...prev,
+          wsRestart: prev.wsRestart + 1
+        }
+
+      case "ResWsRestart":
+        return {
+          ...prev,
+          wsRestart:0 
+        }
       default:
         throw Error("Action is not valid");
     }
@@ -637,6 +681,7 @@ export const TimerWidget = () => {
     text: { upper: "cool text", lower: "cool text" },
     showAnimation: true,
     timerPaused: false,
+    wsRestart: 0,
     custom: {
       text: {
         upper: "",
@@ -646,56 +691,81 @@ export const TimerWidget = () => {
   });
 
   const getId = () => {
-    return location.pathname.replace("/", "")
-  }
+    return location.pathname.replace("/", "");
+  };
 
   const connectWebsocket = () => {
-    const socket = new WebSocket(BACKEND + "/ws");
+    socket = new WebSocket(BACKEND + "/ws");
 
     if (!socket) {
       console.error("couldn't open ws connection to the backend. Exiting...");
-      return 1
+      return 1;
     }
 
     socket.onopen = () => {
       console.debug("[Websocket] opened connection...");
-      socket.send(JSON.stringify({ id: getId(), payload: { action: "Reg" } }));
-    }
+      socket!.send(JSON.stringify({ id: getId(), payload: { action: "Reg" } }));
+    };
 
     socket.onmessage = (msg: MessageEvent) => {
       const data: getTimerRes = JSON.parse(msg.data);
 
-      const timerData = Object.fromEntries(data.payload);
-      const id = getId();
+      if (data.type === "update") {
+        console.debug("Update time due to change");
+        const time = data.payload as string;
 
-      // eah, check if timer is active in db and "tick" if it is
-      if (data.type === "tick" && Object.keys(timerData).includes(id)) {
-        //dispatch({ type: "DecTime" });
-        
-        dispatch({type: "UpdateTime", payload: {time: timerData[id]}});
-
-        // NOTE: currently we handle this on the backend
-        //socket.send(JSON.stringify({ id: location.pathname.replace("/", ""), payload: { action: "Dec" } }))
+        dispatch({ type: "UpdateTime", payload: { time: time } });
       }
+
+      if (data.type === "tick") {
+        const timerData = Object.fromEntries(data.payload as string[][]);
+        const id = getId();
+
+        // eah, check if timer is active in db and "tick" if it is
+        if (Object.keys(timerData).includes(id)) {
+          dispatch({ type: "UpdateTime", payload: { time: timerData[id] } });
+        }
+      }
+    };
+
+    socket.onclose = () => {
+      setTimeout(connectWebsocket, RECONNECT_AFTER * 1000);
     }
-  }
+  };
+
+  const beforeUnload = () => {
+    if (!socket) {
+      return;
+    }
+
+    socket.send(
+      JSON.stringify({
+        id: getId(),
+        payload: { action: "UnReg" },
+      }),
+    );
+    socket.close(15, "Closing timer");
+  };
 
   useEffect(() => {
     // init websocket stuff here
     connectWebsocket();
 
-    fetch(API + `/get_timer?uuid=${getId()}`).then(
-      async (res) => {
-        if (!res.ok) {
-          console.error(await res.text());
-          return;
-        }
+    fetch(API + `/get_timer?uuid=${getId()}`).then(async (res) => {
+      if (!res.ok) {
+        console.error(await res.text());
+        return;
+      }
 
-        const d = await res.json();
-        dispatch({ type: "UpdateTime", payload: { time: d[0].timer } })
-      },
-    );
+      const d = await res.json();
+      dispatch({ type: "UpdateTime", payload: { time: d[0].timer } });
+    });
 
+    addEventListener("beforeunload", beforeUnload);
+
+    return () => {
+      removeEventListener("beforeunload", beforeUnload);
+    };
   }, []);
 
   if (state.loading) {
@@ -703,7 +773,9 @@ export const TimerWidget = () => {
   }
 
   return (
-    <div className={`h-screen w-screen text-white flex flex-col items-center ${window.frameElement != null ? "" : "bg-zinc-900"}`}>
+    <div
+      className={`h-screen w-screen text-white flex flex-col items-center ${window.frameElement != null ? "" : "bg-zinc-900"}`}
+    >
       <Countdown sec={state.time} showAnimation={state.showAnimation} />
     </div>
   );

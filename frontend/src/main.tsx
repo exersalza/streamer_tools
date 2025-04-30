@@ -7,7 +7,7 @@ import { Icons } from "./components/Icons";
 import { Dashboard } from "./components/Dashboard";
 import { CreateTimerOverlay, Timer, TimerWidget } from "./components/Timer";
 import { Settings } from "./components/Settings";
-import { API } from "./components/utils";
+import { API, BACKEND } from "./components/utils";
 
 type States = {
   connected: boolean;
@@ -116,7 +116,7 @@ function App() {
                 "pointer-events-auto text-gray-600 hover:text-gray-500 transition-colors text-sm flex place-items-center gap-1 font-semibold select-none"
               }
             >
-              Made with <span title={"Its beer"}>{Icons.beer}</span> by
+              Made with <a title={"Its beer"} href={BACKEND + "/fish"} >{Icons.beer}</a> by
               exersalza
             </a>
           </div>

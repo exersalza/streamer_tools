@@ -4,6 +4,8 @@ export const PORT = 22727;
 export const BACKEND = `http://${HOST}:${PORT}`;
 export const API = `${BACKEND}/api/v1`;
 
+export const RECONNECT_ATTEMPTS = 3;
+export const RECONNECT_AFTER = 5; // in seconds
 
 export function parseTime(input: number): String {
   const hours = Math.floor(input / 3600);

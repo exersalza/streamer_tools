@@ -27,7 +27,7 @@ macro_rules! top_level {
 
 #[macro_export]
 macro_rules! info {
-    ( $writer:expr, $($msg:tt)+) => {
+    ( $writer:expr; $($msg:tt)+) => {
         $crate::top_level!($crate::logs::LogLevel::Info,  $writer, $($msg)+)
     };
 
@@ -38,7 +38,7 @@ macro_rules! info {
 
 #[macro_export]
 macro_rules! error {
-    ( $writer:expr, $($msg:tt)+) => {
+    ( $writer:expr; $($msg:tt)+) => {
         $crate::top_level!($crate::logs::LogLevel::Error,  $writer, $($msg)+)
     };
 
@@ -49,7 +49,7 @@ macro_rules! error {
 
 #[macro_export]
 macro_rules! warn {
-    ( $writer:expr, $($msg:tt)+) => {
+    ( $writer:expr; $($msg:tt)+) => {
         $crate::top_level!($crate::logs::LogLevel::Warn, $writer, $($msg)+)
     };
 
@@ -60,7 +60,7 @@ macro_rules! warn {
 
 #[macro_export]
 macro_rules! debug {
-    ($writer:expr, $($msg:tt)+) => {
+    ($writer:expr; $($msg:tt)+) => {
         $crate::top_level!($crate::logs::LogLevel::Debug,  $writer, $($msg)+)
     };
 

@@ -1,6 +1,7 @@
 use anyhow::bail;
 /// this gonna be a messy file, dw about it
 use parking_lot::Mutex;
+use reqwest::header;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::{collections::HashMap, sync::Arc, thread, time::Duration};
@@ -116,7 +117,22 @@ async fn post_button_pressed(Json(payload): Json<ButtonPressed>) -> impl IntoRes
     };
 
     match SQL.get_timer(id).await {
-        Ok(e) => e[0].timer.unwrap_or(0).to_string(),
+        Ok(e) => {
+            let ret = e[0].timer.unwrap_or(0).to_string();
+            {
+                let tx = ws_write_fn.lock();
+                let payload = json!({
+                    "type": "update",
+                    "payload": ret
+                });
+                match tx.send(payload.to_string()) {
+                    Ok(v) => crate::debug!("{}", v),
+                    Err(e) => crate::error!("Update timer error: {}", e.to_string()),
+                };
+            }
+
+            ret
+        }
         Err(f) => f.to_string(),
     }
 }
@@ -299,6 +315,12 @@ async fn get_active_timers() -> impl IntoResponse {
     String::from("borke")
 }
 
+const FISHBITES: &[u8] = include_bytes!("assets/fish-spinning.gif");
+
+async fn fish() -> impl IntoResponse {
+    ([(header::CONTENT_TYPE, "image/gif")], FISHBITES)
+}
+
 pub fn create_routes() -> Router {
     Router::new()
         .route(&pre("/get_twitch_username"), get(get_twitch_username))
@@ -320,6 +342,7 @@ pub fn create_routes() -> Router {
         .route(&pre("/get_active_timers"), get(get_active_timers))
         .route("/twitch_invalid", get(twitch_invalid))
         .route("/ws", get(ws_stuff))
+        .route("/fish", get(fish))
         .with_state(RouteStates::default())
 }
 
@@ -334,8 +357,7 @@ async fn handle_socket(socket: WebSocket, state: RouteStates) {
 
     if *oneshot {
         *oneshot = false;
-        let state_copy = state.clone();
-
+        // update thread
         tokio::spawn(async move {
             let mut interval = tokio::time::interval(Duration::from_secs(1));
             loop {
@@ -347,8 +369,12 @@ async fn handle_socket(socket: WebSocket, state: RouteStates) {
                 });
 
                 {
-                    let tx = state_copy.tx.lock();
-                    let _ = tx.send(payload_data.to_string());
+                    //let tx = state_copy.tx.lock();
+                    let tx = ws_write_fn.lock();
+                    match tx.send(payload_data.to_string()) {
+                        Ok(_) => crate::debug!("Sent tick"),
+                        Err(e) => crate::error!("Failed to send tick: {e}"),
+                    }
                 }
 
                 let _ = SQL.dec_all_timer().await;
@@ -411,8 +437,8 @@ async fn read(mut rec: SplitStream<WebSocket>, state: RouteStates, id: uuid::Uui
                     continue;
                 }
             },
-            Ok(Message::Close(_)) => {
-                let tx = state.tx.lock();
+            Ok(Message::Close(e)) => {
+                let tx = ws_write_fn.lock();
                 let _ = tx.send(format!("close-{id}"));
                 break;
             }
@@ -423,7 +449,8 @@ async fn read(mut rec: SplitStream<WebSocket>, state: RouteStates, id: uuid::Uui
 }
 
 async fn write(mut sen: SplitSink<WebSocket, Message>, state: RouteStates, id: uuid::Uuid) {
-    let mut rx = state.tx.lock().subscribe();
+    //let mut rx = state.tx.lock().subscribe();
+    let mut rx = ws_write_fn.lock().subscribe();
 
     if let Err(err) = sen.send(Message::Ping(vec![1, 2, 3].into())).await {
         crate::error!("Client did not answer to ping... Error message: {err}");
@@ -437,7 +464,7 @@ async fn write(mut sen: SplitSink<WebSocket, Message>, state: RouteStates, id: u
         }
 
         if let Err(e) = sen.send(Message::Text(msg.clone().into())).await {
-            dbg!(e);
+            crate::error!("{e}");
             break;
         }
     }
