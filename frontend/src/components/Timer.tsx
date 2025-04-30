@@ -37,7 +37,7 @@ export function TimerButton(props: TimerButtonProps) {
           }}
         >
           {["bmc"].includes(props.data.name) ? (
-            <img className={"size-6"} src="https://cdn.7tv.app/emote/01GY6Y9T6G000CX7G8QSR9TRP1/2x.avif" />
+            <img className={"size-6 rounded-full"} src="https://cdn.7tv.app/emote/01GY6Y9T6G000CX7G8QSR9TRP1/2x.avif" />
           ) : (
             Icons.clock
           )}
@@ -58,6 +58,8 @@ type TimerStates = {
   background_white: boolean;
 };
 
+
+// the timer comp that is shown when you press a timer on the dashboard
 export function Timer(props: TimerProps) {
   const [state, setState] = useState<TimerStates>({
     loading: true,
@@ -114,12 +116,14 @@ export function Timer(props: TimerProps) {
     );
   }
 
+  const BUTTON_THEME = "border-1 border-gray-700 p-2 py-1 rounded-lg grow transition-all hover:cursor-pointer hover:bg-gray-700";
+
   return (
     <div className={"h-full w-full text-zinc-100 p-2"}>
       <p className={"font-bold text-2xl"}>{state.data?.name}</p>
       <p className={"font-semibold text-zinc-400"}>Uuid {props.uuid}</p>
       <fieldset
-        className={"border-1 border-gray-700 rounded-lg p-2 max-w-fit pb-4"}
+        className={"border-1 border-gray-700 rounded-lg p-2 max-w-fit pb-3"}
       >
         <legend className={""}>Paste this into OBS</legend>
         <div
@@ -147,7 +151,7 @@ export function Timer(props: TimerProps) {
           <p className={"text-zinc-100 font-semibold text-xl select-none"}>
             Control elements
           </p>
-          <div className={"flex gap-2 "}>
+          <div className={"flex gap-2 max-w-fit"}>
             {[
               ["M5", "-5 Min"],
               ["M1", "-1 Min"],
@@ -160,14 +164,13 @@ export function Timer(props: TimerProps) {
                 key={type}
                 id={`control-button-${type}`}
                 onClick={buttonOnClick}
-                className={`
-                  transition-all min-w-10 text-zinc-400 rounded-lg bg-gray-800 p-2 cursor-pointer border border-gray-700
-                  ${
-                    type === "Stop"
-                      ? "hover:text-red-500"
-                      : type === "Play"
-                        ? "hover:text-green-500"
-                        : "hover:text-zinc-100"
+                className={ // transition-all min-w-10 text-zinc-400 rounded-lg bg-gray-800 p-2 cursor-pointer border border-gray-700
+                    `${BUTTON_THEME} py-2
+                  ${type === "Stop"
+                    ? "hover:text-red-500"
+                    : type === "Play"
+                      ? "hover:text-green-500"
+                      : "hover:text-zinc-100"
                   }
                   ${classnames.join(" ")}
                 `}
@@ -193,19 +196,33 @@ export function Timer(props: TimerProps) {
             />
             <label for={"toggle-timer-white"}>Toggle white background</label>
           </div>
-          <fieldset
-            className={"border-1 border-gray-700 rounded-lg p-2 max-w-fit pb-4"}
-          >
-            <legend>The current Timer</legend>
-            <div>
-              <iframe
-                src={`/${props.uuid}`}
-                className={`${state.background_white ? "bg-white" : ""}`}
-              />
-            </div>
-          </fieldset>
-          <div>
-            <input placeholder={"Hour"}></input>
+          <div className={"flex flex-col gap-2 w-fit"}>
+            <fieldset
+              className={"border-1 border-gray-700 grow rounded-lg p-2  pb-4"}
+            >
+              <legend>The current Timer</legend>
+              <div>
+                <iframe
+                  src={`/${props.uuid}`}
+                  className={`${state.background_white ? "bg-white" : ""}`}
+                />
+              </div>
+            </fieldset>
+            <fieldset className={"border-gray-700 border-1 rounded-lg  p-2"}>
+              <legend className={"ml-2"}>Increase / Decrease / Set time</legend>
+              <div className={"flex flex-col gap-2"}>
+                <div className={"flex gap-2"}>
+                  {["Hours", "Minutes", "Seconds"].map((v) => (
+                    <input className={"border-1 border-gray-700 w-24 rounded-lg p-2 py-1"} type="number" placeholder={v}></input>
+                  ))}
+                </div>
+                <div className={"flex gap-2 select-none "}>
+                  <button className={BUTTON_THEME}>Increase by</button>
+                  <button className={BUTTON_THEME}>Decrease by</button>
+                  <button className={BUTTON_THEME}>Set to</button>
+                </div>
+              </div>
+            </fieldset>
           </div>
         </div>
       </div>
@@ -615,15 +632,15 @@ type getTimerRes = {
 
 type Actions = {
   type:
-    | "UpdateTime"
-    | "IncTime"
-    | "DecTime"
-    | "TogglePause"
-    | "UpdateText"
-    | "ToggleAnimate"
-    | "ToggleLoading"
-    | "IncWsRestart"
-    | "ResWsRestart";
+  | "UpdateTime"
+  | "IncTime"
+  | "DecTime"
+  | "TogglePause"
+  | "UpdateText"
+  | "ToggleAnimate"
+  | "ToggleLoading"
+  | "IncWsRestart"
+  | "ResWsRestart";
   payload?: any;
 };
 
@@ -668,7 +685,7 @@ export const TimerWidget = () => {
       case "ResWsRestart":
         return {
           ...prev,
-          wsRestart:0 
+          wsRestart: 0
         }
       default:
         throw Error("Action is not valid");
