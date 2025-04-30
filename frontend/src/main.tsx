@@ -44,7 +44,7 @@ function App() {
   const [timerIds, setTimerIds] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => { }, [update]);
+  useEffect(() => {}, [update]);
 
   useEffect(() => {
     fetch(API + "/get_timer_names").then(async (res) => {
@@ -71,8 +71,21 @@ function App() {
         <TimerWidget />
       ) : (
         <div className={"bg-gray-950 h-screen flex flex-col"}>
-          <Header connected={states.connected} toggleSettings={() => { setStates(prev => ({ ...prev, showSettings: !prev.showSettings })) }} />
-          <Settings hidden={!states.showSettings} />
+          <Header
+            connected={states.connected}
+            toggleSettings={() => {
+              setStates((prev) => ({
+                ...prev,
+                showSettings: !prev.showSettings,
+              }));
+            }}
+          />
+          <Settings
+            hidden={!states.showSettings}
+            setHidden={() =>
+              setStates((prev) => ({ ...prev, showSettings: false }))
+            }
+          />
           <CreateTimerOverlay
             hidden={!states.showCreateTimerOverlay}
             hideWindow={() => {
@@ -116,8 +129,16 @@ function App() {
                 "pointer-events-auto text-gray-600 hover:text-gray-500 transition-colors text-sm flex place-items-center gap-1 font-semibold select-none"
               }
             >
-              Made with <a title={"Its beer"} href={BACKEND + "/fish"} >{Icons.beer}</a> by
-              exersalza
+              Made with{" "}
+              <span
+                title={"Its beer"}
+                onClick={() => {
+                  window.location.assign(BACKEND + "/fish");
+                }}
+              >
+                {Icons.beer}
+              </span>{" "}
+              by exersalza
             </a>
           </div>
         </div>
