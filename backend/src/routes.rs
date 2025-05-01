@@ -104,7 +104,6 @@ async fn post_create_timer(Json(payload): Json<Timer>) -> impl IntoResponse {
 }
 
 async fn post_button_pressed(Json(payload): Json<ButtonPressed>) -> impl IntoResponse {
-    dbg!(&payload);
     let id = payload.id.clone();
 
     let _ = match payload.function {
@@ -126,7 +125,7 @@ async fn post_button_pressed(Json(payload): Json<ButtonPressed>) -> impl IntoRes
                     "payload": ret
                 });
                 match tx.send(payload.to_string()) {
-                    Ok(v) => crate::debug!("{}", v),
+                    Ok(v) => (),
                     Err(e) => crate::error!("Update timer error: {}", e.to_string()),
                 };
             }

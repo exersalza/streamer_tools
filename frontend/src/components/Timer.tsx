@@ -208,8 +208,8 @@ export function Timer(props: TimerProps) {
                 />
               </div>
             </fieldset>
-            <fieldset className={"border-gray-700 border-1 rounded-lg  p-2"}>
-              <legend className={"ml-2"}>Increase / Decrease / Set time</legend>
+            <fieldset className={"border-gray-700 border-1 rounded-lg p-2"}>
+              <legend className={"ml-1"}>Increase / Decrease / Set time</legend>
               <div className={"flex flex-col gap-2"}>
                 <div className={"flex gap-2"}>
                   {["Hours", "Minutes", "Seconds"].map((v) => (
