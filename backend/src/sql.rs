@@ -442,12 +442,20 @@ DO UPDATE SET token = ?, expires_in = ?, token_type = ?;
 
     pub async fn add_time_to_timer(&self, id: String, time_to_add: i32) -> anyhow::Result<()> {
         sqlx::query!(
-            "update timer set time = time + ? where id =? ",
+            "update timer set time = max(time + ?, 0) where id = ? ",
             time_to_add,
             id
         )
         .execute(&self.pool)
         .await?;
+
+        Ok(())
+    }
+
+    pub async fn set_timer(&self, id: String, time: i32) -> anyhow::Result<()> {
+        sqlx::query!("update timer set time = max(?, 0) where id = ? ", time, id)
+            .execute(&self.pool)
+            .await?;
 
         Ok(())
     }

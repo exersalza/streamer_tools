@@ -80,3 +80,7 @@ impl Default for Events {
         Self::new()
     }
 }
+
+pub fn stoi(i: String) -> i32 {
+    i.parse::<i32>().unwrap_or_default()
+}

@@ -1,11 +1,12 @@
 import { useEffect, useReducer, useRef, useState } from "preact/hooks";
 import { TimerType } from "../main";
 import { Icons } from "./Icons";
-import { API, BACKEND, HOST, PORT, RECONNECT_AFTER } from "./utils";
+import { _T, API, BACKEND, HOST, PORT, RECONNECT_AFTER } from "./utils";
 import { HexColorPicker } from "powerful-color-picker";
 import { Loading } from "./Loading";
 import { ClipboardCopy, Pause, Play, Square } from "lucide-preact";
 import { BUTTON_THEME, MainButton } from "./Buttons";
+import { RefObject } from "preact";
 
 type States = {};
 
@@ -44,7 +45,10 @@ export function TimerButton(props: TimerButtonProps) {
           }}
         >
           {["bmc"].includes(props.data.name) ? (
-            <img className={"size-6 rounded-full"} src="https://cdn.7tv.app/emote/01GY6Y9T6G000CX7G8QSR9TRP1/2x.avif" />
+            <img
+              className={"size-6 rounded-full"}
+              src="https://cdn.7tv.app/emote/01GY6Y9T6G000CX7G8QSR9TRP1/2x.avif"
+            />
           ) : (
             Icons.clock
           )}
@@ -64,7 +68,6 @@ type TimerStates = {
   data: TimerType | null;
   background_white: boolean;
 };
-
 
 // the timer comp that is shown when you press a timer on the dashboard
 export function Timer(props: TimerProps) {
@@ -128,9 +131,31 @@ export function Timer(props: TimerProps) {
    *  x -> button type
    *  f -> the time in seconds
    * */
-  const updateTimeFunction = (x: "ChInc" | "ChDec" | "ChSet", f: number): void => {
-    socket?.send(JSON.stringify({ id: getId(), payload: { action: x }, data: String(f) }));
-  }
+  const updateTimeFunction = (x: "Inc" | "Dec" | "Set", f: number): void => {
+    fetch(API + "/change_time", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        id: props.uuid,
+        action: { action: x },
+        data: fetchSecondsFromInputs(),
+      }),
+    });
+  };
+
+  let hRef = useRef<HTMLInputElement>(null);
+  let mRef = useRef<HTMLInputElement>(null);
+  let sRef = useRef<HTMLInputElement>(null);
+
+  const fetchSecondsFromInputs = () => {
+    const hoursVal = String(hRef.current?.value || 0);
+    const minutesVal = String(mRef.current?.value || 0);
+    const secondsVal = String(sRef.current?.value || 0);
+
+    return [hoursVal, minutesVal, secondsVal];
+  };
 
   return (
     <div className={"h-full w-full text-zinc-100 p-2"}>
@@ -178,7 +203,8 @@ export function Timer(props: TimerProps) {
                 key={type}
                 id={`control-button-${type}`}
                 onClick={buttonOnClick}
-                className={ // transition-all min-w-10 text-zinc-400 rounded-lg bg-gray-800 p-2 cursor-pointer border border-gray-700
+                className={
+                  // transition-all min-w-10 text-zinc-400 rounded-lg bg-gray-800 p-2 cursor-pointer border border-gray-700
                   `${BUTTON_THEME} py-2
                   ${type === "Stop"
                     ? "hover:text-red-500"
@@ -187,7 +213,8 @@ export function Timer(props: TimerProps) {
                       : "hover:text-zinc-100"
                   }
                   ${classnames.join(" ")}
-                `}
+                `
+                }
               >
                 {value}
               </button>
@@ -212,7 +239,7 @@ export function Timer(props: TimerProps) {
           </div>
           <div className={"flex flex-col gap-2 w-fit"}>
             <fieldset
-              className={"border-1 border-gray-700 grow rounded-lg p-2  pb-4"}
+              className={"border-1 border-gray-700 grow rounded-lg p-2 pb-4"}
             >
               <legend>The current Timer</legend>
               <div>
@@ -223,17 +250,36 @@ export function Timer(props: TimerProps) {
               </div>
             </fieldset>
             <fieldset className={"border-gray-700 border-1 rounded-lg p-2"}>
-              <legend className={"ml-1"}>Increase / Decrease / Set time</legend>
+              <legend title={_T.legend.titles.updateTimes}>Increase / Decrease / Set time</legend>
               <div className={"flex flex-col gap-2"}>
                 <div className={"flex gap-2"}>
-                  {["Hours", "Minutes", "Seconds"].map((v) => (
-                    <input className={"border-1 border-gray-700 w-24 rounded-lg p-2 py-1"} type="number" placeholder={v}></input>
+                  {[
+                    ["Hours", hRef],
+                    ["Minutes", mRef],
+                    ["Seconds", sRef],
+                  ].map((v) => (
+                    <input
+                      className={
+                        "border-1 border-gray-700 w-24 rounded-lg p-2 py-1"
+                      }
+                      placeholder={v[0] as string}
+                      ref={v[1] as RefObject<HTMLInputElement>}
+                    ></input>
                   ))}
                 </div>
                 <div className={"flex gap-2 select-none "}>
-                  <MainButton text="Increase by" onClick={() => updateTimeFunction("ChInc", 0)} />
-                  <MainButton text="Decrease by" onClick={() => updateTimeFunction("ChDec", 1)}/>
-                  <MainButton text="Set to" onClick={() => updateTimeFunction("ChSet", 2)} />
+                  <MainButton
+                    text="Increase by"
+                    onClick={() => updateTimeFunction("Inc", 200)}
+                  />
+                  <MainButton
+                    text="Decrease by"
+                    onClick={() => updateTimeFunction("Dec", 200)}
+                  />
+                  <MainButton
+                    text="Set to"
+                    onClick={() => updateTimeFunction("Set", 2)}
+                  />
                 </div>
               </div>
             </fieldset>
@@ -626,7 +672,7 @@ type TimerCompState = {
   loading: boolean;
   timerPaused: boolean;
   showAnimation: boolean;
-  wsRestart: number,
+  wsRestart: number;
   text: {
     upper: string;
     lower: string;
@@ -657,7 +703,6 @@ type Actions = {
   | "ResWsRestart";
   payload?: any;
 };
-
 
 export const TimerWidget = () => {
   const reducer = (prev: TimerCompState, action: Actions) => {
@@ -692,14 +737,14 @@ export const TimerWidget = () => {
       case "IncWsRestart":
         return {
           ...prev,
-          wsRestart: prev.wsRestart + 1
-        }
+          wsRestart: prev.wsRestart + 1,
+        };
 
       case "ResWsRestart":
         return {
           ...prev,
-          wsRestart: 0
-        }
+          wsRestart: 0,
+        };
       default:
         throw Error("Action is not valid");
     }
@@ -719,7 +764,6 @@ export const TimerWidget = () => {
       },
     },
   });
-
 
   const connectWebsocket = () => {
     socket = new WebSocket(BACKEND + "/ws");
@@ -757,7 +801,7 @@ export const TimerWidget = () => {
 
     socket.onclose = () => {
       setTimeout(connectWebsocket, RECONNECT_AFTER * 1000);
-    }
+    };
   };
 
   const beforeUnload = () => {

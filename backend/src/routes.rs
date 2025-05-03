@@ -25,9 +25,9 @@ use tokio::sync::broadcast;
 
 use crate::{
     config::AM,
-    sql::{Timer, SQL},
+    sql::{self, Timer, SQL},
     twitch::update_user_in_db,
-    utils::ButtonFunction,
+    utils::{stoi, ButtonFunction},
 };
 
 lazy_static! {
@@ -77,6 +77,28 @@ fn pre(input: &str) -> String {
     format!("/api/{API_VERSION}{input}")
 }
 
+async fn update_frontend_timer(id: String) -> String {
+    match SQL.get_timer(id).await {
+        Ok(e) => {
+            let ret = e[0].timer.unwrap_or(0).to_string();
+            {
+                let tx = ws_write_fn.lock();
+                let payload = json!({
+                    "type": "update",
+                    "payload": ret
+                });
+                match tx.send(payload.to_string()) {
+                    Ok(v) => (),
+                    Err(e) => crate::error!("Update timer error: {}", e.to_string()),
+                };
+            }
+
+            ret
+        }
+        Err(f) => f.to_string(),
+    }
+}
+
 async fn get_twitch_username() -> String {
     crate::config!().twitch.username.clone()
 }
@@ -115,25 +137,7 @@ async fn post_button_pressed(Json(payload): Json<ButtonPressed>) -> impl IntoRes
         ButtonFunction::P5 => SQL.add_time_to_timer(payload.id, 300).await,
     };
 
-    match SQL.get_timer(id).await {
-        Ok(e) => {
-            let ret = e[0].timer.unwrap_or(0).to_string();
-            {
-                let tx = ws_write_fn.lock();
-                let payload = json!({
-                    "type": "update",
-                    "payload": ret
-                });
-                match tx.send(payload.to_string()) {
-                    Ok(v) => (),
-                    Err(e) => crate::error!("Update timer error: {}", e.to_string()),
-                };
-            }
-
-            ret
-        }
-        Err(f) => f.to_string(),
-    }
+    update_frontend_timer(id).await
 }
 
 async fn post_update_timer(Json(payload): Json<Timer>) -> impl IntoResponse {
@@ -320,16 +324,63 @@ async fn fish() -> impl IntoResponse {
     ([(header::CONTENT_TYPE, "image/gif")], FISHBITES)
 }
 
-#[derive(Deserialize)]
-struct ChangeTimeQuery {
-    action: String,
+#[derive(Deserialize, Debug)]
+#[serde(tag = "action")]
+enum ChangeAction {
+    Inc,
+    Dec,
+    Set,
 }
 
-async fn change_time(Query(query): Query<ChangeTimeQuery>) -> impl IntoResponse {
-    match query.action {
-        _ => {}
+#[derive(Deserialize)]
+struct ChangeTimeQuery {
+    id: String,
+    action: ChangeAction,
+    data: Vec<String>,
+}
+
+async fn change_time(Json(query): Json<ChangeTimeQuery>) -> anyhow::Result<impl IntoResponse> {
+    if query.data.len() != 3 {
+        bail!("Data has the wrong length.");
+    }
+
+    let loc_id = query.id.clone();
+
+    let mut final_amount = 0;
+
+    let current_time = match SQL.get_timer(query.id.clone()).await {
+        Ok(v) => v[0].timer.unwrap_or(0),
+        Err(_) => bail!("timer doesnt exist"),
     };
-    ""
+
+    dbg!(current_time);
+    return Ok(String::new());
+
+    // hour
+    if query.data[0].contains("%") {
+    } else {
+        final_amount += stoi(query.data[0].clone()) * 3600;
+    }
+
+    // minute
+    if query.data[1].contains("%") {
+    } else {
+        final_amount += stoi(query.data[1].clone()) * 60;
+    }
+
+    // second
+    if query.data[2].contains("%") {
+    } else {
+        final_amount += stoi(query.data[1].clone());
+    }
+
+    let _ = match query.action {
+        ChangeAction::Inc => SQL.add_time_to_timer(loc_id, final_amount).await,
+        ChangeAction::Dec => SQL.add_time_to_timer(loc_id, -final_amount).await,
+        ChangeAction::Set => SQL.set_timer(loc_id, final_amount).await,
+    };
+
+    Ok(update_frontend_timer(query.id).await)
 }
 
 pub fn create_routes() -> Router {
@@ -351,6 +402,7 @@ pub fn create_routes() -> Router {
         .route(&pre("/update_user"), post(update_user))
         .route(&pre("/ping"), get(async || "pong"))
         .route(&pre("/get_active_timers"), get(get_active_timers))
+        .route(&pre("/change_time"), post(change_time))
         .route("/twitch_invalid", get(twitch_invalid))
         .route("/ws", get(ws_stuff))
         .route("/fish", get(fish))
