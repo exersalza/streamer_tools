@@ -5,8 +5,15 @@ import { API, BACKEND, HOST, PORT, RECONNECT_AFTER } from "./utils";
 import { HexColorPicker } from "powerful-color-picker";
 import { Loading } from "./Loading";
 import { ClipboardCopy, Pause, Play, Square } from "lucide-preact";
+import { BUTTON_THEME, MainButton } from "./Buttons";
 
 type States = {};
+
+let socket: WebSocket | null = null;
+
+export const getId = () => {
+  return location.pathname.replace("/", "");
+};
 
 interface TimerButtonProps {
   data: TimerType;
@@ -116,7 +123,14 @@ export function Timer(props: TimerProps) {
     );
   }
 
-  const BUTTON_THEME = "border-1 border-gray-700 p-2 py-1 rounded-lg grow transition-all hover:cursor-pointer hover:bg-gray-700";
+  /**
+   *  # Parameters
+   *  x -> button type
+   *  f -> the time in seconds
+   * */
+  const updateTimeFunction = (x: "ChInc" | "ChDec" | "ChSet", f: number): void => {
+    socket?.send(JSON.stringify({ id: getId(), payload: { action: x }, data: String(f) }));
+  }
 
   return (
     <div className={"h-full w-full text-zinc-100 p-2"}>
@@ -165,7 +179,7 @@ export function Timer(props: TimerProps) {
                 id={`control-button-${type}`}
                 onClick={buttonOnClick}
                 className={ // transition-all min-w-10 text-zinc-400 rounded-lg bg-gray-800 p-2 cursor-pointer border border-gray-700
-                    `${BUTTON_THEME} py-2
+                  `${BUTTON_THEME} py-2
                   ${type === "Stop"
                     ? "hover:text-red-500"
                     : type === "Play"
@@ -217,9 +231,9 @@ export function Timer(props: TimerProps) {
                   ))}
                 </div>
                 <div className={"flex gap-2 select-none "}>
-                  <button className={BUTTON_THEME}>Increase by</button>
-                  <button className={BUTTON_THEME}>Decrease by</button>
-                  <button className={BUTTON_THEME}>Set to</button>
+                  <MainButton text="Increase by" onClick={() => updateTimeFunction("ChInc", 0)} />
+                  <MainButton text="Decrease by" onClick={() => updateTimeFunction("ChDec", 1)}/>
+                  <MainButton text="Set to" onClick={() => updateTimeFunction("ChSet", 2)} />
                 </div>
               </div>
             </fieldset>
@@ -644,7 +658,6 @@ type Actions = {
   payload?: any;
 };
 
-let socket: WebSocket | null = null;
 
 export const TimerWidget = () => {
   const reducer = (prev: TimerCompState, action: Actions) => {
@@ -707,9 +720,6 @@ export const TimerWidget = () => {
     },
   });
 
-  const getId = () => {
-    return location.pathname.replace("/", "");
-  };
 
   const connectWebsocket = () => {
     socket = new WebSocket(BACKEND + "/ws");

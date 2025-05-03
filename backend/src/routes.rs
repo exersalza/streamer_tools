@@ -320,6 +320,18 @@ async fn fish() -> impl IntoResponse {
     ([(header::CONTENT_TYPE, "image/gif")], FISHBITES)
 }
 
+#[derive(Deserialize)]
+struct ChangeTimeQuery {
+    action: String,
+}
+
+async fn change_time(Query(query): Query<ChangeTimeQuery>) -> impl IntoResponse {
+    match query.action {
+        _ => {}
+    };
+    ""
+}
+
 pub fn create_routes() -> Router {
     Router::new()
         .route(&pre("/get_twitch_username"), get(get_twitch_username))
@@ -401,41 +413,44 @@ struct WsPayload {
 async fn read(mut rec: SplitStream<WebSocket>, state: RouteStates, id: uuid::Uuid) {
     while let Some(msg) = rec.next().await {
         match msg {
-            Ok(Message::Text(text)) => match serde_json::from_str::<WsPayload>(&text.to_string()) {
-                Ok(v) => match v.payload {
-                    Action::Dec => {}
-                    Action::Inc => {}
-                    // this keeps track of the id counts so we know when to update an id and when
-                    // not to, hopefully i'll still know when i update the update mechanism
-                    Action::Reg => {
-                        let mut lock = running_timer.lock();
+            Ok(Message::Text(text)) => {
+                match serde_json::from_str::<WsPayload>(&text.to_string()) {
+                    Ok(v) => match v.payload {
+                        Action::Dec => {}
+                        Action::Inc => {}
+                        // this keeps track of the id counts so we know when to update an id and when
+                        // not to, hopefully i'll still know when i update the update mechanism
+                        Action::Reg => {
+                            let mut lock = running_timer.lock();
 
-                        if let Some(f) = lock.get_mut(&v.id) {
-                            *f += 1;
-                            return;
+                            if let Some(f) = lock.get_mut(&v.id) {
+                                *f += 1;
+                                return;
+                            }
+
+                            lock.insert(v.id.clone(), 1);
                         }
+                        Action::UnReg => {
+                            let mut lock = running_timer.lock();
 
-                        lock.insert(v.id.clone(), 1);
-                    }
-                    Action::UnReg => {
-                        let mut lock = running_timer.lock();
-
-                        if let Some(f) = lock.get_mut(&v.id) {
-                            if *f > 0 {
-                                *f -= 1;
+                            if let Some(f) = lock.get_mut(&v.id) {
+                                if *f > 0 {
+                                    *f -= 1;
+                                }
                             }
                         }
+                    },
+                    Err(e) => {
+                        let tx = state.tx.lock();
+                        // we dont care about this Result here, bc it's pretty useless on the backend,
+                        // its just to tell the frontend that it should start formatting its shit
+                        // right.
+                        let _ =
+                            tx.send(format!("Couldn't decode what ever the fuck you send. {e}"));
+                        continue;
                     }
-                },
-                Err(e) => {
-                    let tx = state.tx.lock();
-                    // we dont care about this Result here, bc it's pretty useless on the backend,
-                    // its just to tell the frontend that it should start formatting its shit
-                    // right.
-                    let _ = tx.send(format!("Couldn't decode what ever the fuck you send. {e}"));
-                    continue;
                 }
-            },
+            }
             Ok(Message::Close(e)) => {
                 let tx = ws_write_fn.lock();
                 let _ = tx.send(format!("close-{id}"));
