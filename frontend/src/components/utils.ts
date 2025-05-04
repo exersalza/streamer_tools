@@ -22,7 +22,7 @@ export function parseTime(input: number): String {
 export const _T = {
   legend: {
     titles: {
-      updateTimes: "Set / Inc or Decrement times here. You can also use % (50%) to change the time by the percentage by that amount, or just enter the values and update the time with that."
+      updateTimes: "<update>"
     }
   }
 }

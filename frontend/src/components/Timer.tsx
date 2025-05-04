@@ -148,13 +148,15 @@ export function Timer(props: TimerProps) {
   let hRef = useRef<HTMLInputElement>(null);
   let mRef = useRef<HTMLInputElement>(null);
   let sRef = useRef<HTMLInputElement>(null);
+  let pRef = useRef<HTMLInputElement>(null);
 
   const fetchSecondsFromInputs = () => {
-    const hoursVal = String(hRef.current?.value || 0);
-    const minutesVal = String(mRef.current?.value || 0);
-    const secondsVal = String(sRef.current?.value || 0);
+    const hoursVal = Number(hRef.current?.value || 0) * 3600;
+    const minutesVal = Number(mRef.current?.value || 0) * 60;
+    const secondsVal = Number(sRef.current?.value || 0);
+    const percentageVal = String(pRef.current?.value || 0);
 
-    return [hoursVal, minutesVal, secondsVal];
+    return [hoursVal + minutesVal + secondsVal, percentageVal.replace("%", "")];
   };
 
   return (
@@ -254,14 +256,16 @@ export function Timer(props: TimerProps) {
               <div className={"flex flex-col gap-2"}>
                 <div className={"flex gap-2"}>
                   {[
-                    ["Hours", hRef],
-                    ["Minutes", mRef],
-                    ["Seconds", sRef],
-                  ].map((v) => (
+                    ["Hrs", hRef],
+                    ["Mins", mRef],
+                    ["Secs", sRef],
+                    ["%", pRef]
+                  ].map((v, i) => (
                     <input
                       className={
-                        "border-1 border-gray-700 w-24 rounded-lg p-2 py-1"
+                        "border-1 border-gray-700 max-w-18 min-w-16 rounded-lg p-2 py-1"
                       }
+                      type={i < 3 ? "number" : "text"}
                       placeholder={v[0] as string}
                       ref={v[1] as RefObject<HTMLInputElement>}
                     ></input>

@@ -131,7 +131,7 @@ function App() {
             >
               Made with{" "}
               <span
-                title={"Its beer"}
+                title={"Its beer, or is it?"}
                 onClick={() => {
                   window.location.assign(BACKEND + "/fish");
                 }}

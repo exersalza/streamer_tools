@@ -1,4 +1,5 @@
 use anyhow::bail;
+use chrono_tz::Australia::Currie;
 /// this gonna be a messy file, dw about it
 use parking_lot::Mutex;
 use reqwest::header;
@@ -339,39 +340,37 @@ struct ChangeTimeQuery {
     data: Vec<String>,
 }
 
-async fn change_time(Json(query): Json<ChangeTimeQuery>) -> anyhow::Result<impl IntoResponse> {
-    if query.data.len() != 3 {
-        bail!("Data has the wrong length.");
+async fn change_time(Json(query): Json<ChangeTimeQuery>) -> impl IntoResponse {
+    if query.data.len() != 2 {
+        return String::from("Data has the wrong length.");
     }
 
     let loc_id = query.id.clone();
+
+    // this should be fine as we check above if we have two values
+    let time = stoi(query.data[0].clone());
+    let percentage = stoi(query.data[1].clone());
 
     let mut final_amount = 0;
 
     let current_time = match SQL.get_timer(query.id.clone()).await {
         Ok(v) => v[0].timer.unwrap_or(0),
-        Err(_) => bail!("timer doesnt exist"),
+        Err(_) => return String::from("timer doesnt exist"),
     };
 
-    dbg!(current_time);
-    return Ok(String::new());
+    let oneth = current_time / 100;
+    let finale = oneth as i32 * percentage;
 
-    // hour
-    if query.data[0].contains("%") {
-    } else {
-        final_amount += stoi(query.data[0].clone()) * 3600;
+    if time != 0 && percentage != 0 {
+        final_amount += time;
     }
-
-    // minute
-    if query.data[1].contains("%") {
-    } else {
-        final_amount += stoi(query.data[1].clone()) * 60;
-    }
-
-    // second
-    if query.data[2].contains("%") {
-    } else {
-        final_amount += stoi(query.data[1].clone());
+    match (time, percentage) {
+        (0, 0) => {}
+        (v, 0) => {}
+        (0, v) => {}
+        _ => {
+            final_amount += time;
+        }
     }
 
     let _ = match query.action {
@@ -380,7 +379,7 @@ async fn change_time(Json(query): Json<ChangeTimeQuery>) -> anyhow::Result<impl 
         ChangeAction::Set => SQL.set_timer(loc_id, final_amount).await,
     };
 
-    Ok(update_frontend_timer(query.id).await)
+    update_frontend_timer(query.id).await
 }
 
 pub fn create_routes() -> Router {
