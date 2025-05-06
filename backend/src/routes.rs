@@ -14,7 +14,7 @@ use axum::{
     },
     http::{HeaderMap, StatusCode},
     response::{Html, IntoResponse, Redirect, Response},
-    routing::{get, post},
+    routing::{delete, get, post},
     Json, Router,
 };
 use futures_util::{
@@ -384,8 +384,33 @@ async fn change_time(Json(query): Json<ChangeTimeQuery>) -> impl IntoResponse {
     update_frontend_timer(query.id).await
 }
 
+pub fn get_history() -> impl IntoResponse {
+    ""
+}
+
+#[derive(Deserialize)]
+pub struct UpdateSettings {
+    key: String,
+    value: String,
+}
+
+pub async fn post_update_settings(Json(payload): Json<UpdateSettings>) -> impl IntoResponse {
+    match SQL.update_setting(payload.key, payload.value).await {
+        Ok(_) => "ok".to_string(),
+        Err(e) => e.to_string(),
+    }
+}
+
+pub async fn delete_twitch_data() -> impl IntoResponse {
+    match SQL.remove_token_data().await {
+        Ok(v) => v.to_string(),
+        Err(e) => e.to_string(),
+    }
+}
+
 pub fn create_routes() -> Router {
     Router::new()
+        // refactoring soon :tm:
         .route(&pre("/get_twitch_username"), get(get_twitch_username))
         .route(&pre("/get_all_timers"), get(get_all_timers))
         .route(&pre("/get_timer"), get(get_timer))
@@ -404,6 +429,7 @@ pub fn create_routes() -> Router {
         .route(&pre("/ping"), get(async || "pong"))
         .route(&pre("/get_active_timers"), get(get_active_timers))
         .route(&pre("/change_time"), post(change_time))
+        .route(&pre("/delete_twitch_data"), delete(delete_twitch_data))
         .route("/twitch_invalid", get(twitch_invalid))
         .route("/ws", get(ws_stuff))
         .route("/fish", get(fish))

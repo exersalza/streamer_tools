@@ -1,5 +1,6 @@
 use std::str::FromStr;
 
+use anyhow::{bail, Result};
 use chrono::{DateTime, Utc};
 use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
@@ -66,7 +67,7 @@ impl Sql {
         Self { pool }
     }
 
-    pub async fn get_timer(&self, id: String) -> anyhow::Result<Vec<Timer>> {
+    pub async fn get_timer(&self, id: String) -> Result<Vec<Timer>> {
         let res = sqlx::query!("SELECT s.id, s.name, s.time, s.main, s.is_active, s.color, t.follow, t.sub_t1, t.sub_t2, t.sub_t3, t.dono_each_n, t.dono_n, t.bits_each_n, t.bits_n FROM timer AS s LEFT OUTER JOIN timer_go_down_by AS t ON s.id = t.id where t.id = ?", id)
             .fetch_all(&self.pool)
             .await?;
@@ -98,7 +99,7 @@ impl Sql {
         Ok(ret)
     }
 
-    pub async fn get_all_timer(&self) -> anyhow::Result<Vec<StrippedTimer>> {
+    pub async fn get_all_timer(&self) -> Result<Vec<StrippedTimer>> {
         let res = sqlx::query!("SELECT id, name, time, main, is_active, color FROM timer")
             .fetch_all(&self.pool)
             .await?;
@@ -120,7 +121,7 @@ impl Sql {
         Ok(ret)
     }
 
-    pub async fn post_create_timer(&self, payload: Timer) -> anyhow::Result<()> {
+    pub async fn post_create_timer(&self, payload: Timer) -> Result<()> {
         let id = payload.id.to_string();
 
         let _ = sqlx::query!(
@@ -149,7 +150,7 @@ impl Sql {
     }
 
     // janky ass function, gotta code something for this
-    pub async fn post_update_timer(&self, payload: Timer) -> anyhow::Result<()> {
+    pub async fn post_update_timer(&self, payload: Timer) -> Result<()> {
         let id = payload.id.to_string();
 
         let _ = sqlx::query!(
@@ -176,7 +177,7 @@ impl Sql {
         Ok(())
     }
 
-    pub async fn get_timer_ids(&self) -> anyhow::Result<Vec<String>> {
+    pub async fn get_timer_ids(&self) -> Result<Vec<String>> {
         let res = sqlx::query!("select id from timer")
             .fetch_all(&self.pool)
             .await?;
@@ -188,11 +189,11 @@ impl Sql {
         Ok(ret)
     }
 
-    pub async fn get_user_token_exist(&self) -> anyhow::Result<bool> {
+    pub async fn get_user_token_exist(&self) -> Result<bool> {
         Ok(self.get_twitch_user_token().await?.is_some())
     }
 
-    pub async fn get_twitch_user_token(&self) -> anyhow::Result<Option<String>> {
+    pub async fn get_twitch_user_token(&self) -> Result<Option<String>> {
         let token = sqlx::query!("select user_token from twitch_data where id = 1;")
             .fetch_one(&self.pool)
             .await?;
@@ -200,7 +201,7 @@ impl Sql {
         Ok(token.user_token)
     }
 
-    pub async fn insert_twitch_token(&self, token: String, refresh: String) -> anyhow::Result<()> {
+    pub async fn insert_twitch_token(&self, token: String, refresh: String) -> Result<()> {
         sqlx::query!(
             "INSERT INTO twitch_data (id, user_token, user_refresh)
 VALUES (?, ?, ?)
@@ -218,8 +219,8 @@ DO UPDATE SET user_token = ?, user_refresh = ?;",
         Ok(())
     }
 
-    pub async fn update_user_access_token(&self, res: AuthTokenResponseOk) -> anyhow::Result<()> {
-        let f = sqlx::query!(
+    pub async fn update_user_access_token(&self, res: AuthTokenResponseOk) -> Result<()> {
+        sqlx::query!(
             "INSERT INTO twitch_data (id, user_token, user_refresh, token_type, expires_in)
              VALUES (1, ?, ?, ?, ?)
              ON CONFLICT (id) DO UPDATE
@@ -233,12 +234,19 @@ DO UPDATE SET user_token = ?, user_refresh = ?;",
             res.expires_in
         )
         .execute(&self.pool)
-        .await;
+        .await?;
 
         Ok(())
     }
 
-    pub async fn get_refresh_token(&self) -> anyhow::Result<String> {
+    pub async fn remove_token_data(&self) -> Result<u64> {
+        Ok(sqlx::query!("delete from twitch_data where id=1")
+            .execute(&self.pool)
+            .await?
+            .rows_affected())
+    }
+
+    pub async fn get_refresh_token(&self) -> Result<String> {
         let ret = sqlx::query!("select user_refresh from twitch_data where id = 1")
             .fetch_one(&self.pool)
             .await?;
@@ -246,7 +254,7 @@ DO UPDATE SET user_token = ?, user_refresh = ?;",
         Ok(ret.user_refresh.unwrap_or("".to_string()))
     }
 
-    pub async fn get_expires_in_oauth(&self) -> anyhow::Result<Option<i64>> {
+    pub async fn get_expires_in_oauth(&self) -> Result<Option<i64>> {
         let ret = sqlx::query!("select expires_in from _oauth where id=1")
             .fetch_one(&self.pool)
             .await?;
@@ -257,7 +265,7 @@ DO UPDATE SET user_token = ?, user_refresh = ?;",
     ///
     /// # Returns
     /// (token, token_type) -> the token and the type
-    pub async fn get_bot_oauth(&self) -> anyhow::Result<(String, String)> {
+    pub async fn get_bot_oauth(&self) -> Result<(String, String)> {
         let ret = sqlx::query!("select token, token_type from _oauth where id=1")
             .fetch_one(&self.pool)
             .await?;
@@ -270,7 +278,7 @@ DO UPDATE SET user_token = ?, user_refresh = ?;",
         access_token: String,
         expires_in: DateTime<Utc>,
         token_type: String,
-    ) -> anyhow::Result<()> {
+    ) -> Result<()> {
         let time = expires_in.timestamp();
 
         sqlx::query!(
@@ -292,7 +300,7 @@ DO UPDATE SET token = ?, expires_in = ?, token_type = ?;
         Ok(())
     }
 
-    pub async fn update_user(&self, user: &User) -> anyhow::Result<()> {
+    pub async fn update_user(&self, user: &User) -> Result<()> {
         let f = self.get_user().await?;
         if f.is_some() {
             dbg!(&f, &user);
@@ -318,7 +326,7 @@ DO UPDATE SET token = ?, expires_in = ?, token_type = ?;
         Ok(())
     }
 
-    pub async fn update_username(&self, username: String) -> anyhow::Result<()> {
+    pub async fn update_username(&self, username: String) -> Result<()> {
         let f = self.get_user().await?;
 
         if f.is_some() {
@@ -338,7 +346,7 @@ DO UPDATE SET token = ?, expires_in = ?, token_type = ?;
     }
 
     /// get the user from the db
-    pub async fn get_user(&self) -> anyhow::Result<Option<User>> {
+    pub async fn get_user(&self) -> Result<Option<User>> {
         // we just hope that there is only one
         let f = sqlx::query!(
             "select id, username, display_name, profile_pic, broadcaster_type from user_data"
@@ -359,7 +367,7 @@ DO UPDATE SET token = ?, expires_in = ?, token_type = ?;
         Ok(None)
     }
 
-    pub async fn dec_timer(&self, id: String) -> anyhow::Result<u64> {
+    pub async fn dec_timer(&self, id: String) -> Result<u64> {
         Ok(
             sqlx::query!("update timer set time = time - 1 where id = ?", id)
                 .execute(&self.pool)
@@ -368,7 +376,7 @@ DO UPDATE SET token = ?, expires_in = ?, token_type = ?;
         )
     }
 
-    pub async fn dec_all_timer(&self) -> anyhow::Result<()> {
+    pub async fn dec_all_timer(&self) -> Result<()> {
         // types
         // 0 -> normal decrementing timer
         // 1 -> incrementing timer
@@ -414,21 +422,21 @@ DO UPDATE SET token = ?, expires_in = ?, token_type = ?;
         Ok(())
     }
 
-    pub async fn toggle_timer_active(&self, id: String) -> anyhow::Result<()> {
+    pub async fn toggle_timer_active(&self, id: String) -> Result<()> {
         sqlx::query!("update timer set is_active = ~is_active where id = ?", id)
             .execute(&self.pool)
             .await?;
         Ok(())
     }
 
-    pub async fn set_timer_active(&self, id: String, active: bool) -> anyhow::Result<()> {
+    pub async fn set_timer_active(&self, id: String, active: bool) -> Result<()> {
         sqlx::query!("update timer set is_active = ? where id = ?", active, id)
             .execute(&self.pool)
             .await?;
         Ok(())
     }
 
-    pub async fn get_active_timer(&self) -> anyhow::Result<Vec<(String, String)>> {
+    pub async fn get_active_timer(&self) -> Result<Vec<(String, String)>> {
         let mut ret = vec![];
         for row in sqlx::query!("select id, time from timer where is_active = 1")
             .fetch_all(&self.pool)
@@ -440,7 +448,7 @@ DO UPDATE SET token = ?, expires_in = ?, token_type = ?;
         Ok(ret)
     }
 
-    pub async fn add_time_to_timer(&self, id: String, time_to_add: i32) -> anyhow::Result<()> {
+    pub async fn add_time_to_timer(&self, id: String, time_to_add: i32) -> Result<()> {
         sqlx::query!(
             "update timer set time = max(time + ?, 0) where id = ? ",
             time_to_add,
@@ -452,10 +460,28 @@ DO UPDATE SET token = ?, expires_in = ?, token_type = ?;
         Ok(())
     }
 
-    pub async fn set_timer(&self, id: String, time: i32) -> anyhow::Result<()> {
+    pub async fn set_timer(&self, id: String, time: i32) -> Result<()> {
         sqlx::query!("update timer set time = max(?, 0) where id = ? ", time, id)
             .execute(&self.pool)
             .await?;
+
+        Ok(())
+    }
+
+    // SETTINGS
+    pub async fn update_setting(&self, key: String, value: String) -> Result<()> {
+        if !["show_emote"].contains(&key.as_str()) {
+            bail!("Key is not valid");
+        }
+
+        sqlx::query(&format!(
+            "INSERT INTO settings (id)
+             VALUES (1)
+             ON CONFLICT (id) DO UPDATE
+             SET {key} = {value};",
+        ))
+        .execute(&self.pool)
+        .await?;
 
         Ok(())
     }

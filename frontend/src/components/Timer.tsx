@@ -162,9 +162,9 @@ export function Timer(props: TimerProps) {
       percentageVal.replace("%", ""),
     ];
   };
-  
+
   const clearValues = () => {
-    for (let i of [hRef, mRef, sRef, pRef] ) {
+    for (let i of [hRef, mRef, sRef, pRef]) {
       if (i.current) {
         i.current.value = ""
       }
@@ -221,12 +221,11 @@ export function Timer(props: TimerProps) {
                 className={
                   // transition-all min-w-10 text-zinc-400 rounded-lg bg-gray-800 p-2 cursor-pointer border border-gray-700
                   `${BUTTON_THEME} py-2
-                  ${
-                    type === "Stop"
-                      ? "hover:text-red-500"
-                      : type === "Play"
-                        ? "hover:text-green-500"
-                        : "hover:text-zinc-100"
+                  ${type === "Stop"
+                    ? "hover:text-red-500"
+                    : type === "Play"
+                      ? "hover:text-green-500"
+                      : "hover:text-zinc-100"
                   }
                   ${classnames.join(" ")}
                 `
@@ -282,6 +281,8 @@ export function Timer(props: TimerProps) {
                         "border-1 border-gray-700 max-w-20 min-w-16 grow rounded-lg p-2 py-1"
                       }
                       type={i < 3 ? "number" : "text"}
+                      onKeyDown={e => { if (e.key === '-') e.preventDefault(); }}
+                      min={0}
                       placeholder={v[0] as string}
                       ref={v[1] as RefObject<HTMLInputElement>}
                     ></input>
@@ -713,15 +714,15 @@ type getTimerRes = {
 
 type Actions = {
   type:
-    | "UpdateTime"
-    | "IncTime"
-    | "DecTime"
-    | "TogglePause"
-    | "UpdateText"
-    | "ToggleAnimate"
-    | "ToggleLoading"
-    | "IncWsRestart"
-    | "ResWsRestart";
+  | "UpdateTime"
+  | "IncTime"
+  | "DecTime"
+  | "TogglePause"
+  | "UpdateText"
+  | "ToggleAnimate"
+  | "ToggleLoading"
+  | "IncWsRestart"
+  | "ResWsRestart";
   payload?: any;
 };
 
