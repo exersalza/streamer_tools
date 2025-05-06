@@ -7,6 +7,7 @@ import { Loading } from "./Loading";
 import { ClipboardCopy, Pause, Play, Square } from "lucide-preact";
 import { BUTTON_THEME, MainButton } from "./Buttons";
 import { RefObject } from "preact";
+import { setupRerender } from "preact/test-utils";
 
 type States = {};
 
@@ -156,8 +157,20 @@ export function Timer(props: TimerProps) {
     const secondsVal = Number(sRef.current?.value || 0);
     const percentageVal = String(pRef.current?.value || 0);
 
-    return [hoursVal + minutesVal + secondsVal, percentageVal.replace("%", "")];
+    return [
+      String(hoursVal + minutesVal + secondsVal),
+      percentageVal.replace("%", ""),
+    ];
   };
+  
+  const clearValues = () => {
+    for (let i of [hRef, mRef, sRef, pRef] ) {
+      if (i.current) {
+        i.current.value = ""
+      }
+    }
+  }
+
 
   return (
     <div className={"h-full w-full text-zinc-100 p-2"}>
@@ -181,7 +194,7 @@ export function Timer(props: TimerProps) {
             className={"inline cursor-pointer"}
             onClick={() => {
               navigator.clipboard.writeText(
-                `http://${window.location.hostname === "localhost" ? "localhost:5173" : `${HOST}:${PORT}`}/${props.uuid}`,
+                `http://${window.location.hostname === "localhost" ? "localhost:5173" : `${HOST}:${PORT}`}/${props.uuid}`
               );
             }}
           />
@@ -208,11 +221,12 @@ export function Timer(props: TimerProps) {
                 className={
                   // transition-all min-w-10 text-zinc-400 rounded-lg bg-gray-800 p-2 cursor-pointer border border-gray-700
                   `${BUTTON_THEME} py-2
-                  ${type === "Stop"
-                    ? "hover:text-red-500"
-                    : type === "Play"
-                      ? "hover:text-green-500"
-                      : "hover:text-zinc-100"
+                  ${
+                    type === "Stop"
+                      ? "hover:text-red-500"
+                      : type === "Play"
+                        ? "hover:text-green-500"
+                        : "hover:text-zinc-100"
                   }
                   ${classnames.join(" ")}
                 `
@@ -244,7 +258,7 @@ export function Timer(props: TimerProps) {
               className={"border-1 border-gray-700 grow rounded-lg p-2 pb-4"}
             >
               <legend>The current Timer</legend>
-              <div>
+              <div className={"flex justify-center"}>
                 <iframe
                   src={`/${props.uuid}`}
                   className={`${state.background_white ? "bg-white" : ""}`}
@@ -252,18 +266,20 @@ export function Timer(props: TimerProps) {
               </div>
             </fieldset>
             <fieldset className={"border-gray-700 border-1 rounded-lg p-2"}>
-              <legend title={_T.legend.titles.updateTimes}>Increase / Decrease / Set time</legend>
+              <legend title={_T.legend.titles.updateTimes}>
+                Increase / Decrease / Set time
+              </legend>
               <div className={"flex flex-col gap-2"}>
                 <div className={"flex gap-2"}>
                   {[
                     ["Hrs", hRef],
                     ["Mins", mRef],
                     ["Secs", sRef],
-                    ["%", pRef]
+                    ["%", pRef],
                   ].map((v, i) => (
                     <input
                       className={
-                        "border-1 border-gray-700 max-w-18 min-w-16 rounded-lg p-2 py-1"
+                        "border-1 border-gray-700 max-w-20 min-w-16 grow rounded-lg p-2 py-1"
                       }
                       type={i < 3 ? "number" : "text"}
                       placeholder={v[0] as string}
@@ -284,6 +300,7 @@ export function Timer(props: TimerProps) {
                     text="Set to"
                     onClick={() => updateTimeFunction("Set", 2)}
                   />
+                  <MainButton text="clear" onClick={clearValues} />
                 </div>
               </div>
             </fieldset>
@@ -696,15 +713,15 @@ type getTimerRes = {
 
 type Actions = {
   type:
-  | "UpdateTime"
-  | "IncTime"
-  | "DecTime"
-  | "TogglePause"
-  | "UpdateText"
-  | "ToggleAnimate"
-  | "ToggleLoading"
-  | "IncWsRestart"
-  | "ResWsRestart";
+    | "UpdateTime"
+    | "IncTime"
+    | "DecTime"
+    | "TogglePause"
+    | "UpdateText"
+    | "ToggleAnimate"
+    | "ToggleLoading"
+    | "IncWsRestart"
+    | "ResWsRestart";
   payload?: any;
 };
 
@@ -817,7 +834,7 @@ export const TimerWidget = () => {
       JSON.stringify({
         id: getId(),
         payload: { action: "UnReg" },
-      }),
+      })
     );
     socket.close(15, "Closing timer");
   };

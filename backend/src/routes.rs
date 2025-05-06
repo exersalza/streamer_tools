@@ -358,16 +358,18 @@ async fn change_time(Json(query): Json<ChangeTimeQuery>) -> impl IntoResponse {
         Err(_) => return String::from("timer doesnt exist"),
     };
 
-    let oneth = current_time / 100;
-    let finale = oneth as i32 * percentage;
-
-    if time != 0 && percentage != 0 {
-        final_amount += time;
-    }
     match (time, percentage) {
-        (0, 0) => {}
-        (v, 0) => {}
-        (0, v) => {}
+        (0, 0) => {
+            return String::new();
+        }
+        (0, v) => {
+            // calc and add percentage
+            let oneth = current_time as f64 / 100.0;
+            // uhhhhh so this might be a massive fucking problem if the user is somehow deciding he
+            // needs more than 2147483648 seconds or basically anything, just so you dont have to
+            // pull up an calculator, that are 68 years
+            final_amount += (oneth * v as f64).round() as i32; // https://www.reddit.com/r/stonks/comments/fuh1n7/mafs/#lightbox
+        }
         _ => {
             final_amount += time;
         }
