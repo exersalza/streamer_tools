@@ -6,6 +6,14 @@ type HistoryData = {
 
 const History = (props: {history: HistoryData[]}) => {
   return (
-    <div></div>
+    <div className={"flex flex-col gap-2"}>
+      {
+        props.history.map(v => (
+          <div>
+            <p>{v.event_type}</p>
+          </div>
+        ))
+      }
+    </div>
   )
 }

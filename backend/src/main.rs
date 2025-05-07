@@ -48,7 +48,7 @@ async fn main() {
         loop {
             if attempts >= RECONNECT_ATTEMPTS {
                 crate::error!(
-                    "Failed after {RECONNECT_ATTEMPTS} times, wont try again until restart..."
+                    "Failed after {RECONNECT_ATTEMPTS} tries, wont try again until restart..."
                 );
                 break;
             }

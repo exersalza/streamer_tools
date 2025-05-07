@@ -388,14 +388,20 @@ pub fn get_history() -> impl IntoResponse {
     ""
 }
 
-#[derive(Deserialize)]
-pub struct UpdateSettings {
-    key: String,
-    value: String,
+#[derive(Deserialize, Serialize)]
+pub struct Settings {
+    pub show_emotes: bool,
 }
 
-pub async fn post_update_settings(Json(payload): Json<UpdateSettings>) -> impl IntoResponse {
-    match SQL.update_setting(payload.key, payload.value).await {
+pub async fn get_settings() -> impl IntoResponse {
+    match SQL.get_settings().await {
+        Ok(v) => serde_json::to_string(&v).unwrap_or(String::from("{}")),
+        Err(e) => e.to_string(),
+    }
+}
+
+pub async fn post_update_settings(Json(payload): Json<Settings>) -> impl IntoResponse {
+    match SQL.update_setting(payload).await {
         Ok(_) => "ok".to_string(),
         Err(e) => e.to_string(),
     }
@@ -411,28 +417,33 @@ pub async fn delete_twitch_data() -> impl IntoResponse {
 pub fn create_routes() -> Router {
     Router::new()
         // refactoring soon :tm:
-        .route(&pre("/get_twitch_username"), get(get_twitch_username))
-        .route(&pre("/get_all_timers"), get(get_all_timers))
+        .route(&pre("/get_user"), get(get_user))
         .route(&pre("/get_timer"), get(get_timer))
+        .route(&pre("/ping"), get(async || "pong"))
+        .route(&pre("/twitch_auth"), get(twitch_auth))
+        .route(&pre("/get_settings"), get(get_settings))
+        .route(&pre("/get_all_timers"), get(get_all_timers))
         .route(&pre("/get_timer_names"), get(get_timer_ids))
-        .route(&pre("/post_create_timer"), post(post_create_timer))
-        .route(&pre("/post_update_timer"), post(post_update_timer))
+        .route(&pre("/get_active_timers"), get(get_active_timers))
+        .route(&pre("/get_twitch_username"), get(get_twitch_username))
+        .route(&pre("/is_connected_to_twitch"), get(connected_to_twitch))
+        // POSTS
         .route(
             &pre("/post_toggle_timer_active"),
             post(post_toggle_timer_active),
         )
-        .route(&pre("/post_button_pressed"), post(post_button_pressed))
-        .route(&pre("/twitch_auth"), get(twitch_auth))
-        .route(&pre("/is_connected_to_twitch"), get(connected_to_twitch))
-        .route(&pre("/get_user"), get(get_user))
         .route(&pre("/update_user"), post(update_user))
-        .route(&pre("/ping"), get(async || "pong"))
-        .route(&pre("/get_active_timers"), get(get_active_timers))
         .route(&pre("/change_time"), post(change_time))
+        .route(&pre("/post_create_timer"), post(post_create_timer))
+        .route(&pre("/post_update_timer"), post(post_update_timer))
+        .route(&pre("/post_button_pressed"), post(post_button_pressed))
+        .route(&pre("/post_update_settings"), post(post_update_settings))
+        // DELETE
         .route(&pre("/delete_twitch_data"), delete(delete_twitch_data))
-        .route("/twitch_invalid", get(twitch_invalid))
-        .route("/ws", get(ws_stuff))
+        // NO NEED FOR PREFIX ROUTES
         .route("/fish", get(fish))
+        .route("/ws", get(ws_stuff))
+        .route("/twitch_invalid", get(twitch_invalid))
         .with_state(RouteStates::default())
 }
 

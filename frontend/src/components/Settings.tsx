@@ -19,6 +19,7 @@ interface User {
 export function Settings(props: Props) {
   const [twitchConnected, setTwitchConnected] = useState(false);
   const [user, setUser] = useState<User>();
+  const [emote, setEmote] = useState<boolean>(false);
 
   useEffect(() => {
     fetch(API + "/is_connected_to_twitch").then(async (res) => {
@@ -37,6 +38,15 @@ export function Settings(props: Props) {
 
       let f = await res.json();
       setUser(f);
+    });
+
+    fetch(API + "/get_settings").then(async (res) => {
+      if (!res.ok) {
+        return;
+      }
+
+      let data = await res.json();
+      setEmote(data.show_emotes);
     });
   }, []);
 
@@ -97,7 +107,11 @@ export function Settings(props: Props) {
                 <input
                   type="checkbox"
                   id="enable_emotes_cb"
+                  checked={emote}
                   className={"mr-2"}
+                  onInput={() => {
+                    setEmote((prev) => !prev);
+                  }}
                 />
                 <label for="enable_emotes_cb">Enable emotes</label>
               </div>
@@ -106,6 +120,16 @@ export function Settings(props: Props) {
                 onClick={(e) => {
                   e.preventDefault();
                   updateUser();
+
+                  fetch(API + "/post_update_settings", {
+                    method: "POST",
+                    headers: {
+                      "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({
+                      show_emotes: emote,
+                    }),
+                  }).then();
                 }}
                 text="save"
                 className={"text-zinc-100"}
@@ -118,16 +142,26 @@ export function Settings(props: Props) {
             text={
               !twitchConnected ? "Connect with Twitch" : "Connected to Twitch"
             }
-            className={`text-zinc-100 hover:bg-purple-600 ${!twitchConnected ? "bg-purple-500" : ""}`}
+            className={`text-zinc-100 ${!twitchConnected ? "bg-purple-500 hover:bg-purple-600" : ""}`}
             onClick={() => {
               window.location.assign(
-                "https://id.twitch.tv/oauth2/authorize?response_type=code&client_id=2i56tfmomtm0a3m3m5w83boazvkaks&force_verify=true&redirect_uri=http://localhost:22727/api/v1/twitch_auth&scope=channel:read:subscriptions+moderator:read:followers&"
+                "https://id.twitch.tv/oauth2/authorize?response_type=code&client_id=2i56tfmomtm0a3m3m5w83boazvkaks&force_verify=true&redirect_uri=http://localhost:22727/api/v1/twitch_auth&scope=channel:read:subscriptions+moderator:read:followers&",
               );
             }}
           />
-          <MainButton text={"Remove Twitch connection"} className={"bg-red-500 hover:bg-red-600 text-zinc-100"} onClick={() => {
-            fetch(API + "/delete_twitch_data", { method: "DELETE" })
-          }} />
+          <MainButton
+            text={"Remove Twitch connection"}
+            className={"bg-red-500 hover:bg-red-600 text-zinc-100"}
+            onClick={() => {
+              fetch(API + "/delete_twitch_data", { method: "DELETE" }).then(
+                async (res) => {
+                  if (res.ok) {
+                    setTwitchConnected(false);
+                  }
+                },
+              );
+            }}
+          />
         </div>
         <div>
           <button

@@ -8,7 +8,7 @@ use sqlx::{query, Executor, SqlitePool};
 use uuid::Uuid;
 
 use crate::{
-    routes::{running_timer, AuthTokenResponseOk},
+    routes::{running_timer, AuthTokenResponseOk, Settings},
     twitch::User,
 };
 
@@ -469,20 +469,27 @@ DO UPDATE SET token = ?, expires_in = ?, token_type = ?;
     }
 
     // SETTINGS
-    pub async fn update_setting(&self, key: String, value: String) -> Result<()> {
-        if !["show_emote"].contains(&key.as_str()) {
-            bail!("Key is not valid");
-        }
-
-        sqlx::query(&format!(
-            "INSERT INTO settings (id)
-             VALUES (1)
+    pub async fn update_setting(&self, payload: Settings) -> Result<()> {
+        sqlx::query!(
+            "INSERT INTO settings (id, show_emotes)
+             VALUES (1, ?)
              ON CONFLICT (id) DO UPDATE
-             SET {key} = {value};",
-        ))
+             SET show_emotes = EXCLUDED.show_emotes;",
+            payload.show_emotes
+        )
         .execute(&self.pool)
         .await?;
 
         Ok(())
+    }
+
+    pub async fn get_settings(&self) -> Result<Settings> {
+        let res = sqlx::query!("select show_emotes from settings where id = 1")
+            .fetch_one(&self.pool)
+            .await?;
+
+        Ok(Settings {
+            show_emotes: res.show_emotes.unwrap_or(0) == 1,
+        })
     }
 }
