@@ -414,6 +414,24 @@ pub async fn delete_twitch_data() -> impl IntoResponse {
     }
 }
 
+#[derive(Deserialize, Serialize, Debug)]
+pub struct HistoryItem {
+    pub uuid: String,
+    pub event_type: String,
+    pub amount: i64,
+    pub user: String,
+    pub extra: String,
+    pub timestamp: i64,
+    pub time_added: i64,
+}
+
+pub async fn get_timer_hist(Query(query): Query<FetchTimer>) -> impl IntoResponse {
+    match SQL.get_timer_hist(query.uuid).await {
+        Ok(v) => serde_json::to_string(&v).unwrap_or(String::from("{}")),
+        Err(e) => e.to_string(),
+    }
+}
+
 pub fn create_routes() -> Router {
     Router::new()
         // refactoring soon :tm:
@@ -422,6 +440,7 @@ pub fn create_routes() -> Router {
         .route(&pre("/ping"), get(async || "pong"))
         .route(&pre("/twitch_auth"), get(twitch_auth))
         .route(&pre("/get_settings"), get(get_settings))
+        .route(&pre("/get_timer_hist"), get(get_timer_hist))
         .route(&pre("/get_all_timers"), get(get_all_timers))
         .route(&pre("/get_timer_names"), get(get_timer_ids))
         .route(&pre("/get_active_timers"), get(get_active_timers))

@@ -8,7 +8,7 @@ use sqlx::{query, Executor, SqlitePool};
 use uuid::Uuid;
 
 use crate::{
-    routes::{running_timer, AuthTokenResponseOk, Settings},
+    routes::{running_timer, AuthTokenResponseOk, HistoryItem, Settings},
     twitch::User,
 };
 
@@ -491,5 +491,28 @@ DO UPDATE SET token = ?, expires_in = ?, token_type = ?;
         Ok(Settings {
             show_emotes: res.show_emotes.unwrap_or(0) == 1,
         })
+    }
+
+    pub async fn get_timer_hist(&self, uuid: String) -> Result<Vec<HistoryItem>> {
+        let q = sqlx::query!(
+            "select uuid, event_type, amount, user, extra, timestamp, time_added from history where uuid = ? order by timestamp", uuid
+        ).fetch_all(&self.pool).await?;
+
+        let mut ret = vec![];
+
+        // TODO: refactor into one liner, its just a POC for now
+        for i in q {
+            ret.push(HistoryItem {
+                uuid: i.uuid.unwrap_or_default(),
+                event_type: i.event_type.unwrap_or("subscription".to_string()),
+                amount: i.amount.unwrap_or_default(),
+                user: i.user.unwrap_or("Anonymous".to_string()),
+                extra: i.extra.unwrap_or_default(),
+                timestamp: i.timestamp.unwrap_or_default(),
+                time_added: i.time_added.unwrap_or_default(),
+            });
+        }
+
+        Ok(ret)
     }
 }

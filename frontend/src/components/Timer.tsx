@@ -7,6 +7,7 @@ import { Loading } from "./Loading";
 import { ClipboardCopy, Pause, Play, Square } from "lucide-preact";
 import { BUTTON_THEME, MainButton } from "./Buttons";
 import { RefObject } from "preact";
+import { History } from "./History";
 
 type States = {};
 
@@ -67,14 +68,16 @@ type TimerStates = {
   loading: boolean;
   data: TimerType | null;
   background_white: boolean;
+  historyData: HistoryData[];
 };
 
 // the timer comp that is shown when you press a timer on the dashboard
-export function Timer(props: TimerProps) {
+export const Timer = (props: TimerProps) => {
   const [state, setState] = useState<TimerStates>({
     loading: true,
     data: null,
     background_white: false,
+    historyData: [],
   });
 
   useEffect(() => {
@@ -91,6 +94,19 @@ export function Timer(props: TimerProps) {
         ...prev,
         loading: false,
         data: data[0] as TimerType,
+      }));
+    });
+
+    fetch(API + `/get_timer_hist?uuid=${props.uuid}`).then(async (res) => {
+      if (!res.ok) {
+        return;
+      }
+
+      let data = await res.json();
+
+      setState((prev) => ({
+        ...prev,
+        historyData: data,
       }));
     });
   }, [props.uuid]);
@@ -114,17 +130,6 @@ export function Timer(props: TimerProps) {
       }
     });
   };
-
-  if (state.loading) {
-    return (
-      <div className={"h-full w-full p-2 text-zinc-100"}>
-        <div className={"flex place-items-center gap-2"}>
-          <p>Loading</p>
-          {Icons.loading}
-        </div>
-      </div>
-    );
-  }
 
   /**
    *  # Parameters
@@ -165,151 +170,173 @@ export function Timer(props: TimerProps) {
   const clearValues = () => {
     for (let i of [hRef, mRef, sRef, pRef]) {
       if (i.current) {
-        i.current.value = ""
+        i.current.value = "";
       }
     }
+  };
+
+  // RENDERING
+
+  if (state.loading) {
+    return (
+      <div className={"h-full w-full p-2 text-zinc-100"}>
+        <div className={"flex place-items-center gap-2"}>
+          <p>Loading</p>
+          {Icons.loading}
+        </div>
+      </div>
+    );
   }
 
-
   return (
-    <div className={"h-full w-full text-zinc-100 p-2"}>
-      <p className={"font-bold text-2xl"}>{state.data?.name}</p>
-      <p className={"font-semibold text-zinc-400"}>Uuid {props.uuid}</p>
-      <fieldset
-        className={"border-1 border-gray-700 rounded-lg p-2 max-w-fit pb-3"}
-      >
-        <legend className={""}>Paste this into OBS</legend>
-        <div
-          className={"flex place-items-center bg-gray-700 gap-2 p-2 rounded-lg"}
+    <div className={"h-full w-full text-zinc-100 p-2 flex gap-2"}>
+      <div>
+        <p className={"font-bold text-2xl"}>{state.data?.name}</p>
+        <p className={"font-semibold text-zinc-400"}>Uuid {props.uuid}</p>
+        <fieldset
+          className={"border-1 border-gray-700 rounded-lg p-2 max-w-fit pb-3"}
         >
-          <a className={" "} target={"_blank"} href={`/${props.uuid}`}>
-            http://
-            {window.location.hostname === "localhost"
-              ? "localhost:5173"
-              : `${HOST}:${PORT}`}
-            /{props.uuid}
-          </a>
-          <ClipboardCopy
-            className={"inline cursor-pointer"}
-            onClick={() => {
-              navigator.clipboard.writeText(
-                `http://${window.location.hostname === "localhost" ? "localhost:5173" : `${HOST}:${PORT}`}/${props.uuid}`
-              );
-            }}
-          />
-        </div>
-      </fieldset>
-      <div className={"flex flex-col gap-4 mt-8"}>
-        <div>
-          <p className={"text-zinc-100 font-semibold text-xl select-none"}>
-            Control elements
-          </p>
-          <div className={"flex gap-2 max-w-fit"}>
-            {[
-              ["M5", "-5 Min"],
-              ["M1", "-1 Min"],
-              ["Stop", <Square className={"pointer-events-none"} />],
-              ["Play", <Play className={"pointer-events-none"} />],
-              ["P1", "+1 Min"],
-              ["P5", "+5 Min"],
-            ].map(([type, value, ...classnames]) => (
-              <button
-                key={type}
-                id={`control-button-${type}`}
-                onClick={buttonOnClick}
-                className={
-                  // transition-all min-w-10 text-zinc-400 rounded-lg bg-gray-800 p-2 cursor-pointer border border-gray-700
-                  `${BUTTON_THEME} py-2
-                  ${type === "Stop"
-                    ? "hover:text-red-500"
-                    : type === "Play"
-                      ? "hover:text-green-500"
-                      : "hover:text-zinc-100"
-                  }
-                  ${classnames.join(" ")}
-                `
-                }
-              >
-                {value}
-              </button>
-            ))}
-          </div>
-        </div>
-        <div className={""}>
-          <div className={"select-none flex gap-1"}>
-            <input
-              id={"toggle-timer-white"}
-              className={"text-white"}
-              type="checkbox"
-              checked={state.background_white}
-              onChange={() => {
-                setState((prev) => ({
-                  ...prev,
-                  background_white: !prev.background_white,
-                }));
+          <legend className={""}>Paste this into OBS</legend>
+          <div
+            className={
+              "flex place-items-center bg-gray-700 gap-2 p-2 rounded-lg"
+            }
+          >
+            <a className={" "} target={"_blank"} href={`/${props.uuid}`}>
+              http://
+              {window.location.hostname === "localhost"
+                ? "localhost:5173"
+                : `${HOST}:${PORT}`}
+              /{props.uuid}
+            </a>
+            <ClipboardCopy
+              className={"inline cursor-pointer"}
+              onClick={() => {
+                navigator.clipboard.writeText(
+                  `http://${window.location.hostname === "localhost" ? "localhost:5173" : `${HOST}:${PORT}`}/${props.uuid}`
+                );
               }}
             />
-            <label for={"toggle-timer-white"}>Toggle white background</label>
           </div>
-          <div className={"flex flex-col gap-2 w-fit"}>
-            <fieldset
-              className={"border-1 border-gray-700 grow rounded-lg p-2 pb-4"}
-            >
-              <legend>The current Timer</legend>
-              <div className={"flex justify-center"}>
-                <iframe
-                  src={`/${props.uuid}`}
-                  className={`${state.background_white ? "bg-white" : ""}`}
-                />
-              </div>
-            </fieldset>
-            <fieldset className={"border-gray-700 border-1 rounded-lg p-2"}>
-              <legend title={_T.legend.titles.updateTimes}>
-                Increase / Decrease / Set time
-              </legend>
-              <div className={"flex flex-col gap-2"}>
-                <div className={"flex gap-2"}>
-                  {[
-                    ["Hrs", hRef],
-                    ["Mins", mRef],
-                    ["Secs", sRef],
-                    ["%", pRef],
-                  ].map((v, i) => (
-                    <input
-                      className={
-                        "border-1 border-gray-700 max-w-20 min-w-16 grow rounded-lg p-2 py-1"
-                      }
-                      type={i < 3 ? "number" : "text"}
-                      onKeyDown={e => { if (e.key === '-') e.preventDefault(); }}
-                      min={0}
-                      placeholder={v[0] as string}
-                      ref={v[1] as RefObject<HTMLInputElement>}
-                    ></input>
-                  ))}
+        </fieldset>
+        <div className={"flex flex-col gap-4 mt-8"}>
+          <div>
+            <p className={"text-zinc-100 font-semibold text-xl select-none"}>
+              Control elements
+            </p>
+            <div className={"flex gap-2 max-w-fit"}>
+              {[
+                ["M5", "-5 Min"],
+                ["M1", "-1 Min"],
+                ["Stop", <Square className={"pointer-events-none"} />],
+                ["Play", <Play className={"pointer-events-none"} />],
+                ["P1", "+1 Min"],
+                ["P5", "+5 Min"],
+              ].map(([type, value, ...classnames]) => (
+                <button
+                  key={type}
+                  id={`control-button-${type}`}
+                  onClick={buttonOnClick}
+                  className={
+                    // transition-all min-w-10 text-zinc-400 rounded-lg bg-gray-800 p-2 cursor-pointer border border-gray-700
+                    `${BUTTON_THEME} py-2
+${
+  type === "Stop"
+    ? "hover:text-red-500"
+    : type === "Play"
+      ? "hover:text-green-500"
+      : "hover:text-zinc-100"
+}
+${classnames.join(" ")}
+`
+                  }
+                >
+                  {value}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className={""}>
+            <div className={"select-none flex gap-1"}>
+              <input
+                id={"toggle-timer-white"}
+                className={"text-white"}
+                type="checkbox"
+                checked={state.background_white}
+                onChange={() => {
+                  setState((prev) => ({
+                    ...prev,
+                    background_white: !prev.background_white,
+                  }));
+                }}
+              />
+              <label for={"toggle-timer-white"}>Toggle white background</label>
+            </div>
+            <div className={"flex flex-col gap-2 w-fit"}>
+              <fieldset
+                className={"border-1 border-gray-700 grow rounded-lg p-2 pb-4"}
+              >
+                <legend>The current Timer</legend>
+                <div className={"flex justify-center"}>
+                  <iframe
+                    src={`/${props.uuid}`}
+                    className={`${state.background_white ? "bg-white" : ""}`}
+                  />
                 </div>
-                <div className={"flex gap-2 select-none "}>
-                  <MainButton
-                    text="Increase by"
-                    onClick={() => updateTimeFunction("Inc", 200)}
-                  />
-                  <MainButton
-                    text="Decrease by"
-                    onClick={() => updateTimeFunction("Dec", 200)}
-                  />
-                  <MainButton
-                    text="Set to"
-                    onClick={() => updateTimeFunction("Set", 2)}
-                  />
-                  <MainButton text="clear" onClick={clearValues} />
+              </fieldset>
+              <fieldset className={"border-gray-700 border-1 rounded-lg p-2"}>
+                <legend title={_T.legend.titles.updateTimes}>
+                  Increase / Decrease / Set time
+                </legend>
+                <div className={"flex flex-col gap-2"}>
+                  <div className={"flex gap-2"}>
+                    {[
+                      ["Hrs", hRef],
+                      ["Mins", mRef],
+                      ["Secs", sRef],
+                      ["%", pRef],
+                    ].map((v, i) => (
+                      <input
+                        className={
+                          "border-1 border-gray-700 max-w-20 min-w-16 grow rounded-lg p-2 py-1"
+                        }
+                        type={i < 3 ? "number" : "text"}
+                        onKeyDown={(e) => {
+                          if (e.key === "-") e.preventDefault();
+                        }}
+                        min={0}
+                        placeholder={v[0] as string}
+                        ref={v[1] as RefObject<HTMLInputElement>}
+                      ></input>
+                    ))}
+                  </div>
+                  <div className={"flex gap-2 select-none "}>
+                    <MainButton
+                      text="Increase by"
+                      onClick={() => updateTimeFunction("Inc", 200)}
+                    />
+                    <MainButton
+                      text="Decrease by"
+                      onClick={() => updateTimeFunction("Dec", 200)}
+                    />
+                    <MainButton
+                      text="Set to"
+                      onClick={() => updateTimeFunction("Set", 2)}
+                    />
+                    <MainButton text="clear" onClick={clearValues} />
+                  </div>
                 </div>
-              </div>
-            </fieldset>
+              </fieldset>
+            </div>
           </div>
         </div>
       </div>
+      <div>
+        <History history={state.historyData} />
+      </div>
     </div>
   );
-}
+};
 
 interface TimerOverlayProps {
   hidden: boolean;
@@ -713,15 +740,15 @@ type getTimerRes = {
 
 type Actions = {
   type:
-  | "UpdateTime"
-  | "IncTime"
-  | "DecTime"
-  | "TogglePause"
-  | "UpdateText"
-  | "ToggleAnimate"
-  | "ToggleLoading"
-  | "IncWsRestart"
-  | "ResWsRestart";
+    | "UpdateTime"
+    | "IncTime"
+    | "DecTime"
+    | "TogglePause"
+    | "UpdateText"
+    | "ToggleAnimate"
+    | "ToggleLoading"
+    | "IncWsRestart"
+    | "ResWsRestart";
   payload?: any;
 };
 
@@ -868,7 +895,9 @@ export const TimerWidget = () => {
     <div
       className={`h-screen w-screen text-white flex flex-col items-center ${window.frameElement != null ? "" : "bg-zinc-900"}`}
     >
+      <p>UPPER TEXT</p>
       <Countdown sec={state.time} showAnimation={state.showAnimation} />
+      <p>BOTTOM TEXT</p>
     </div>
   );
 };

@@ -69,6 +69,7 @@ CREATE IF NOT EXISTS TABLE "history" (
 	"user"	TEXT,
 	"extra"	TEXT,
 	"timestamp"	INTEGER,
+  "time_added"	INTEGER,
 	PRIMARY KEY("id" AUTOINCREMENT)
 )
 
