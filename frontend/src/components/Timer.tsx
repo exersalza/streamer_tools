@@ -7,7 +7,6 @@ import { Loading } from "./Loading";
 import { ClipboardCopy, Pause, Play, Square } from "lucide-preact";
 import { BUTTON_THEME, MainButton } from "./Buttons";
 import { RefObject } from "preact";
-import { setupRerender } from "preact/test-utils";
 
 type States = {};
 
