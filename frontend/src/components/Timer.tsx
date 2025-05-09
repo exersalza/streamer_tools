@@ -102,11 +102,11 @@ export const Timer = (props: TimerProps) => {
         return;
       }
 
-      let data = await res.json();
+      let data: HistoryData[] = await res.json();
 
       setState((prev) => ({
         ...prev,
-        historyData: data,
+        historyData: data.reverse(),
       }));
     });
   }, [props.uuid]);
@@ -189,7 +189,7 @@ export const Timer = (props: TimerProps) => {
   }
 
   return (
-    <div className={"h-full w-full text-zinc-100 p-2 flex gap-2"}>
+    <div className={"h-full w-full text-zinc-100 p-2 grid"}>
       <div>
         <p className={"font-bold text-2xl"}>{state.data?.name}</p>
         <p className={"font-semibold text-zinc-400"}>Uuid {props.uuid}</p>
