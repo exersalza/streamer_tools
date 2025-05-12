@@ -1,2 +1,32 @@
-@import "tailwindcss";
-@plugin "tailwind-scrollbar";
+@import 'tailwindcss';
+
+@layer base {
+  /* Chrome, Edge, Safari */
+  ::-webkit-scrollbar {
+    width: 12px;
+  }
+  ::-webkit-scrollbar-track {
+    border-radius: 5px;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background-color: var(--color-gray-600); /* dark thumb */
+    border-radius: 5px;
+  }
+
+  /* Firefox */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: #3f3f46 #18181b;
+  }
+}
+
+
+.share-tech-regular {
+  font-family: "Share Tech", sans-serif;
+  font-weight: 400;
+  font-style: normal;
+}
+
+
+@plugin 'tailwind-scrollbar';

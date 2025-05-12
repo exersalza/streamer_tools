@@ -8,7 +8,7 @@ use sqlx::{query, Executor, SqlitePool};
 use uuid::Uuid;
 
 use crate::{
-    routes::{running_timer, AuthTokenResponseOk, HistoryItem, Settings},
+    routes::{running_timer, AuthTokenResponseOk, HistoryItem, Settings, TimerCustom},
     twitch::User,
 };
 
@@ -515,4 +515,7 @@ DO UPDATE SET token = ?, expires_in = ?, token_type = ?;
 
         Ok(ret)
     }
+
+    // TIMER CUSTOM THIGNS
+    pub async fn get_timer_custom_data(&self, id: String) -> Result<TimerCustom> {}
 }

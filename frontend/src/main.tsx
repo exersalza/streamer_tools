@@ -70,7 +70,7 @@ function App() {
       {timerIds.includes(location.pathname.replace("/", "")) ? (
         <TimerWidget />
       ) : (
-        <div className={"bg-gray-950 h-screen flex flex-col"}>
+        <div className={"bg-gray-950 h-screen flex flex-col overflow-hidden"}>
           <Header
             connected={states.connected}
             toggleSettings={() => {

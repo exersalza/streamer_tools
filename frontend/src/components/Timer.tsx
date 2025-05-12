@@ -8,6 +8,7 @@ import { ClipboardCopy, Pause, Play, Square } from "lucide-preact";
 import { BUTTON_THEME, MainButton } from "./Buttons";
 import { RefObject } from "preact";
 import { History } from "./History";
+import { Customization, Fieldset } from "./Customization";
 
 type States = {};
 
@@ -189,20 +190,21 @@ export const Timer = (props: TimerProps) => {
   }
 
   return (
-    <div className={"h-full w-full text-zinc-100 p-2 grid"}>
-      <div>
+    <div
+      className={
+        "h-full w-full text-zinc-100 p-2 mb-4 flex gap-2 overflow-hidden"
+      }
+    >
+      <div className={"overflow-hidden w-1/2"}>
         <p className={"font-bold text-2xl"}>{state.data?.name}</p>
         <p className={"font-semibold text-zinc-400"}>Uuid {props.uuid}</p>
-        <fieldset
-          className={"border-1 border-gray-700 rounded-lg p-2 max-w-fit pb-3"}
-        >
-          <legend className={""}>Paste this into OBS</legend>
+        <Fieldset legend="Paste this into OBS">
           <div
             className={
-              "flex place-items-center bg-gray-700 gap-2 p-2 rounded-lg"
+              "flex place-items-center bg-gray-700 gap-2 p-2 rounded-lg justify-between"
             }
           >
-            <a className={" "} target={"_blank"} href={`/${props.uuid}`}>
+            <a className={""} target={"_blank"} href={`/${props.uuid}`}>
               http://
               {window.location.hostname === "localhost"
                 ? "localhost:5173"
@@ -218,7 +220,7 @@ export const Timer = (props: TimerProps) => {
               }}
             />
           </div>
-        </fieldset>
+        </Fieldset>
         <div className={"flex flex-col gap-4 mt-8"}>
           <div>
             <p className={"text-zinc-100 font-semibold text-xl select-none"}>
@@ -273,21 +275,15 @@ ${classnames.join(" ")}
               <label for={"toggle-timer-white"}>Toggle white background</label>
             </div>
             <div className={"flex flex-col gap-2 w-fit"}>
-              <fieldset
-                className={"border-1 border-gray-700 grow rounded-lg p-2 pb-4"}
-              >
-                <legend>The current Timer</legend>
+              <Fieldset legend="The current Timer">
                 <div className={"flex justify-center"}>
                   <iframe
                     src={`/${props.uuid}`}
                     className={`${state.background_white ? "bg-white" : ""}`}
                   />
                 </div>
-              </fieldset>
-              <fieldset className={"border-gray-700 border-1 rounded-lg p-2"}>
-                <legend title={_T.legend.titles.updateTimes}>
-                  Increase / Decrease / Set time
-                </legend>
+              </Fieldset>
+              <Fieldset legendTitle={_T.legend.titles.updateTimes} legend="Increase / Decrease / Set time">
                 <div className={"flex flex-col gap-2"}>
                   <div className={"flex gap-2"}>
                     {[
@@ -326,13 +322,15 @@ ${classnames.join(" ")}
                     <MainButton text="clear" onClick={clearValues} />
                   </div>
                 </div>
-              </fieldset>
+              </Fieldset>
             </div>
           </div>
         </div>
       </div>
-      <div>
+      <div></div>
+      <div className={"w-full flex flex-col"}>
         <History history={state.historyData} />
+        <Customization id={getId()} />
       </div>
     </div>
   );

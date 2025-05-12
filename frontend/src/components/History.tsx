@@ -1,12 +1,13 @@
 import { JSX } from "preact/jsx-runtime";
 import { stringToHexColor } from "./utils";
+import { Fieldset } from "./Customization";
 
 export const History = (props: { history: HistoryData[] }) => {
   const formatAmount = (v: HistoryData): string => {
     const i = v.amount;
 
     switch (v.event_type) {
-      case "gift": 
+      case "gift":
         return i + " Subs";
       case "sub":
         return `T${i}`
@@ -36,8 +37,8 @@ export const History = (props: { history: HistoryData[] }) => {
   };
 
   return (
-    <fieldset className={"border-1 border-gray-700 rounded-lg p-2 overflow-auto h-60  good-scrollbar scrollbar scrollbar-thumb-zinc-400 scrollbar-thumb-rounded-full scrollbar-thumb-w-4"}>
-      <legend>Event History</legend>
+
+    <Fieldset className={"border-1 border-gray-700 rounded-lg p-2 overflow-auto h-70 "} legend="Event History">
       <div className={"flex flex-col gap-2"}>
         {
           // we reverse here as we dont want to shift all elements in the array when we add a new event
@@ -57,6 +58,6 @@ export const History = (props: { history: HistoryData[] }) => {
           ))
         }
       </div>
-    </fieldset>
+    </Fieldset>
   );
 };
