@@ -28,13 +28,13 @@ export const FONTS: Record<string, CSSProperties> = {
     fontFamily: "Nunito Sans, sans-serif",
     fontWeight: 500,
     fontStyle: "normal",
-    fontVariationSettings: "wdth 100, YTLC 500"
+    fontVariationSettings: "wdth 100, YTLC 500",
   },
-  "Ubuntu": {
+  Ubuntu: {
     fontFamily: "Ubuntu, sans-serif",
     fontWeight: 500,
-    fontStyle: "normal"
-  }
+    fontStyle: "normal",
+  },
 };
 
 const FONT_WEIGHTS: Record<keyof typeof FONTS, number[]> = {
@@ -44,30 +44,58 @@ const FONT_WEIGHTS: Record<keyof typeof FONTS, number[]> = {
   "Share Tech": [400],
   "Nunito Sans": DEFAULT_FONT_RANGE.map((v) => v + 100),
   Ubuntu: [300, 400, 500, 700],
-  "": DEFAULT_FONT_RANGE
+  "": DEFAULT_FONT_RANGE,
 };
 
 export const getFontWithWeight = (font: keyof typeof FONTS, weight: number) => {
   return {
     ...FONTS[font],
-    fontWeight: weight
-  }
+    fontWeight: weight,
+  };
 };
 
-export const Customization = (props: { id: string }) => {
-  const [state, setState] = useState({
-    // text
+type TimerState = {
+  upperText: string;
+  upperColor: string;
+  upperBorder: string;
+  upperBorderSize: string;
+  lowerText: string;
+  lowerColor: string;
+  lowerBorder: string;
+  lowerBorderSize: string;
+  textColor: string;
+  border: string;
+  borderSize: string;
+  borderColor: string;
+  animate: boolean;
+  textFont: string;
+  fontWeight: string;
+  textSize: string;
+};
+
+export const Customization = (props: { id: "" }) => {
+  const [state, setState] = useState<TimerState>({
     upperText: "",
+    upperColor: "",
+    upperBorder: "",
+    upperBorderSize: "",
     lowerText: "",
+    lowerColor: "",
+    lowerBorder: "",
+    lowerBorderSize: "",
     textColor: "",
-    textSize: "",
-    textFont: "",
-    // border
-    borderColor: "",
+    border: "",
     borderSize: "",
-    // animation for when the time changes
+    borderColor: "",
     animate: false,
+    textFont: "",
+    fontWeight: "",
+    textSize: "",
   });
+
+  const us = (t: Partial<typeof state>) => {
+    setState((prev) => ({ ...prev, ...t }));
+  };
 
   return (
     <Fieldset legend="Timer Customization">
@@ -75,15 +103,20 @@ export const Customization = (props: { id: string }) => {
         <Dropdown
           placeholder="Font"
           values={Object.keys(FONTS)}
-          callback={() => {}}
+          callback={(v) => {
+            us({ textFont: v });
+          }}
           valuesStyle={Object.values(FONTS)}
         />
-        <Dropdown 
+        <Dropdown
           placeholder="Font Weight"
           values={FONT_WEIGHTS[state.textFont].map(String)}
-          callback={() => {}}
+          callback={(v) => {
+            us({ fontWeight: v });
+          }}
         />
 
+        <input className={""}></input>
       </div>
     </Fieldset>
   );

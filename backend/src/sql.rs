@@ -517,5 +517,7 @@ DO UPDATE SET token = ?, expires_in = ?, token_type = ?;
     }
 
     // TIMER CUSTOM THIGNS
-    pub async fn get_timer_custom_data(&self, id: String) -> Result<TimerCustom> {}
+    pub async fn get_timer_custom_data(&self, id: String) -> Result<TimerCustom> {
+        todo!()
+    }
 }

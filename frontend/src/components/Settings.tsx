@@ -68,7 +68,7 @@ export function Settings(props: Props) {
 
   return (
     <div
-      className={`h-screen w-screen absolute z-50 backdrop-blur grid place-items-center ${props.hidden ? "hidden" : ""}`}
+      className={`h-screen w-screen absolute z-500 backdrop-blur grid place-items-center ${props.hidden ? "hidden" : ""}`}
     >
       <div
         className={

@@ -1,4 +1,5 @@
 import { render } from "preact";
+import "preact/debug";
 import "./index.css";
 import { Header } from "./components/Header";
 import { SideBar } from "./components/SideBar";

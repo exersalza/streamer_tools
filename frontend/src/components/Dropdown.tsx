@@ -127,7 +127,7 @@ export function Dropdown(props: Props) {
   return (
     <div
       id={props.id}
-      className={`w-46 max-h-60 z-100 bg-gray-200/80 dark:bg-gray-800 relative ${states.open && states.values.length + (props.addEmptyValue ? 1 : 0) !== 0 ? "z-101 rounded-t-lg" : "rounded-lg"} select-none transition-all dropdown-parent ${props.className}`}
+      className={`w-46 max-h-60 z-100 bg-gray-200/80 dark:bg-gray-800 relative ${states.open && states.values.length + (props.addEmptyValue ? 1 : 0) !== 0 ? "z-10 rounded-t-lg" : "rounded-lg"} select-none transition-all dropdown-parent ${props.className}`}
       ref={bodyRef}
     >
       <div
