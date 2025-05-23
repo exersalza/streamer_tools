@@ -500,8 +500,7 @@ DO UPDATE SET token = ?, expires_in = ?, token_type = ?;
 
         let mut ret = vec![];
 
-        // TODO: refactor into one liner, its just a POC for now
-        for i in q {
+        q.into_iter().for_each(|i| {
             ret.push(HistoryItem {
                 uuid: i.uuid.unwrap_or_default(),
                 event_type: i.event_type.unwrap_or("subscription".to_string()),
@@ -510,8 +509,8 @@ DO UPDATE SET token = ?, expires_in = ?, token_type = ?;
                 extra: i.extra.unwrap_or_default(),
                 timestamp: i.timestamp.unwrap_or_default(),
                 time_added: i.time_added.unwrap_or_default(),
-            });
-        }
+            })
+        });
 
         Ok(ret)
     }

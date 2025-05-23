@@ -56,10 +56,14 @@ export const getFontWithWeight = (font: keyof typeof FONTS, weight: number) => {
 
 type TimerState = {
   upperText: string;
+  upperTextFont: string;
+  upperTextWeight: string;
   upperColor: string;
   upperBorder: string;
   upperBorderSize: string;
   lowerText: string;
+  lowerTextFont: string;
+  lowerTextWeight: string;
   lowerColor: string;
   lowerBorder: string;
   lowerBorderSize: string;
@@ -73,16 +77,20 @@ type TimerState = {
   textSize: string;
 };
 
-export const Customization = (props: { id: "" }) => {
+export const Customization = (props: { id: string }) => {
   const [state, setState] = useState<TimerState>({
     upperText: "",
-    upperColor: "",
     upperBorder: "",
+    upperColor: "",
     upperBorderSize: "",
+    upperTextFont: "",
+    upperTextWeight: "",
     lowerText: "",
     lowerColor: "",
     lowerBorder: "",
     lowerBorderSize: "",
+    lowerTextFont: "",
+    lowerTextWeight: "",
     textColor: "",
     border: "",
     borderSize: "",
@@ -98,27 +106,76 @@ export const Customization = (props: { id: "" }) => {
   };
 
   return (
-    <Fieldset legend="Timer Customization">
-      <div className={"flex gap-2"}>
-        <Dropdown
-          placeholder="Font"
-          values={Object.keys(FONTS)}
-          callback={(v) => {
-            us({ textFont: v });
-          }}
-          valuesStyle={Object.values(FONTS)}
-        />
-        <Dropdown
-          placeholder="Font Weight"
-          values={FONT_WEIGHTS[state.textFont].map(String)}
-          callback={(v) => {
-            us({ fontWeight: v });
-          }}
-        />
+    <div>
+      <Fieldset legend="Timer Customization">
+        <Fieldset legend="Timer">
+          <div className={"flex gap-2"}>
+            <Dropdown
+              placeholder="Font"
+              values={Object.keys(FONTS)}
+              callback={(v) => {
+                us({ textFont: v });
+              }}
+              valuesStyle={Object.values(FONTS)}
+            />
+            <Dropdown
+              placeholder="Font Weight"
+              values={FONT_WEIGHTS[state.textFont].map(String)}
+              callback={(v) => {
+                us({ fontWeight: v });
+              }}
+            />
+          </div>
+        </Fieldset>
+        <Fieldset legend="Upper Text">
+          <div className={"flex gap-2"}>
+            <input
+              className={"rounded-lg border-gray-700 border-1 px-1 w-46"}
+              placeholder={"Upper Text"}
+            ></input>
+            <Dropdown
+              placeholder="Upper Text Font"
+              values={Object.keys(FONTS)}
+              callback={(v) => {
+                us({ upperTextFont: v });
+              }}
+              valuesStyle={Object.values(FONTS)}
+            />
+            <Dropdown
+              placeholder="Font Weight"
+              values={FONT_WEIGHTS[state.upperTextFont].map(String)}
+              callback={(v) => {
+                us({ upperTextFont: v });
+              }}
+            />
+          </div>
+        </Fieldset>
 
-        <input className={""}></input>
-      </div>
-    </Fieldset>
+        <Fieldset legend="Lower Text">
+          <div className={"flex gap-2"}>
+            <input
+              className={"rounded-lg border-gray-700 border-1 px-1 w-46"}
+              placeholder={"Bottom Text"}
+            ></input>
+            <Dropdown
+              placeholder="Lower Text Font"
+              values={Object.keys(FONTS)}
+              callback={(v) => {
+                us({ lowerTextFont: v });
+              }}
+              valuesStyle={Object.values(FONTS)}
+            />
+            <Dropdown
+              placeholder="Font Weight"
+              values={FONT_WEIGHTS[state.lowerTextFont].map(String)}
+              callback={(v) => {
+                us({ lowerTextWeight: v });
+              }}
+            />
+          </div>
+        </Fieldset>
+      </Fieldset>
+    </div>
   );
 };
 
@@ -131,9 +188,7 @@ export const Fieldset = (props: {
   return (
     <fieldset
       title={props.legendTitle}
-      className={
-        "border-1 border-gray-700 rounded-lg p-2 pb-3 " + props.className
-      }
+      className={"border-1 border-gray-700 rounded-lg p-2 " + props.className}
     >
       <legend>{props.legend}</legend>
       {props.children}
