@@ -56,6 +56,9 @@ pub struct StrippedTimer {
     pub color: String,
 }
 
+
+
+
 // TODO:
 //  - Add implementation for recovery/first start of the prgram. eg. add migration scripts
 #[allow(clippy::new_without_default)]
@@ -304,7 +307,7 @@ DO UPDATE SET token = ?, expires_in = ?, token_type = ?;
         let f = self.get_user().await?;
         if f.is_some() {
             dbg!(&f, &user);
-            match sqlx::query!("update user_data set username = ?, display_name = ?, profile_pic = ?, broadcaster_type = ?, id = ?", 
+            match sqlx::query!("update user_data set username = ?, display_name = ?, profile_pic = ?, broadcaster_type = ?, id = ?",
                 user.login,
                 user.display_name,
                 user.profile_image_url,

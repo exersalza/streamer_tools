@@ -1,18 +1,20 @@
 use core::{fmt, str};
 use std::{collections::HashMap, sync::Arc};
 
-use anyhow::{bail, Result};
+use anyhow::{Result, bail};
+use axum::http::status;
 use futures::{SinkExt, StreamExt};
 use lazy_static::lazy_static;
 use parking_lot::Mutex;
+use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use tokio_tungstenite::{
     connect_async,
-    tungstenite::{client::IntoClientRequest, Message},
+    tungstenite::{Message, client::IntoClientRequest},
 };
 
-use crate::{config::AM, debug, routes::ws_write_fn, sql::SQL};
+use crate::{config::AM, error, sql::SQL};
 
 const KEEPALIVE_TIMEOUT: i32 = 10;
 const MSG_LOG_LEN: usize = 256;
@@ -65,6 +67,11 @@ struct InitResponse {
 #[derive(Deserialize, Debug)]
 struct GetUser {
     data: Vec<User>,
+}
+
+#[derive(Deserialize, Debug)]
+struct TokenJson {
+    refresh_token: Option<String>,
 }
 
 // https://dev.twitch.tv/docs/api/reference/#get-users
@@ -262,26 +269,103 @@ fn handle_notification(text: String) {
     let parsed: NotifPayload = serde_json::from_str(&text).unwrap();
 }
 
+async fn is_token_valid(token: &str) -> bool {
+    let is_valid = match rew_cl
+        .get("https://id.twitch.tv/oauth2/validate")
+        .header("Authorization", format!("Bearer {token}"))
+        .send()
+        .await
+    {
+        Ok(v) => v,
+        Err(e) => {
+            error!("can't validate token: {e}");
+            return false;
+        }
+    };
+
+    is_valid.status() != status::StatusCode::UNAUTHORIZED
+}
+
+async fn refresh_token(
+    token: String,
+    refresh_token: String,
+    expires_in: String,
+) -> (String, String, String) {
+    let def_ret = (token, refresh_token, expires_in);
+    let twitch_cfg = &crate::config!().twitch;
+    let refresh_token = match SQL.get_refresh_token().await {
+        Ok(v) => v,
+        Err(e) => {
+            error!("can't get refresh token {e}");
+            return def_ret;
+        }
+    };
+
+    let body = json!({
+        "client_id": twitch_cfg.client_id,
+        "client_secret": twitch_cfg.client_secret,
+        "grant_type": "refresh_token",
+        "refresh_token": refresh_token
+    })
+    .to_string();
+
+    let token_res = match rew_cl
+        .post("https://id.twitch.tv/oauth2/token")
+        .header("Content-Type", "application/json")
+        .body(body)
+        .send()
+        .await
+    {
+        Ok(v) => v,
+        Err(e) => {
+            dbg!(e);
+            return def_ret;
+        }
+    };
+
+    if token_res.status() != StatusCode::OK {
+        error!(
+            "refresh token request failed: {}",
+            token_res.text().await.unwrap()
+        );
+        return def_ret;
+    }
+
+    let token_json = match token_res.text().await {
+        Ok(v) => match serde_json::from_str::<TokenJson>(dbg!(v.as_str())) {
+            Ok(v) => v,
+            Err(e) => {
+                error!("token_json is invalid json: {e}");
+                return def_ret;
+            }
+        },
+        Err(e) => {
+            error!("new token res text is invalid: {e}");
+            return def_ret;
+        }
+    };
+
+    if token_json.refresh_token.is_none() {
+        error!("something went wrong getting the refresh token, token is `none`");
+    }
+
+    def_ret
+}
+
 impl Twitch {
     pub async fn new() -> Self {
-        let (token, token_type) = if let Ok(tok) = SQL.get_bot_oauth().await {
+        let (mut token, token_type) = if let Ok(tok) = SQL.get_bot_oauth().await {
             tok
         } else {
             ("gibberish".to_string(), "Bearer".to_string())
         };
         dbg!(&token, &token_type);
 
-        let is_valid = rew_cl
-            .get("https://id.twitch.tv/oauth2/validate")
-            .header("Authorization", format!("Bearer {token}"))
-            .send()
-            .await
-            .unwrap()
-            .text()
-            .await
-            .unwrap();
-
-        dbg!(is_valid);
+        if !is_token_valid(&token).await {
+            let (token, refresh_token, expires_in) =
+                    // TODO: do this
+                refresh_token(token, String::new(), String::new()).await;
+        }
 
         //let _ = get_and_store_oauth().await;
         Self {}
